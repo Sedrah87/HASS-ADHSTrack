@@ -1,0 +1,38 @@
+{
+  "entity": {
+    "sensor": {
+      "recovery": { "default": "mdi:battery-heart-variant" },
+      "schlaf": { "default": "mdi:sleep" },
+      "schlafdauer": { "default": "mdi:bed-clock" },
+      "strain": { "default": "mdi:lightning-bolt" },
+      "ruhepuls": { "default": "mdi:heart-pulse" },
+      "hrv": { "default": "mdi:heart-flash" },
+      "atemfrequenz": { "default": "mdi:lungs" },
+      "letzte_herzfrequenz": { "default": "mdi:heart" },
+      "koffein": { "default": "mdi:coffee" },
+      "alkohol": { "default": "mdi:glass-wine" },
+      "fluessigkeit": { "default": "mdi:cup-water" },
+      "stimmung": { "default": "mdi:emoticon-outline" },
+      "energie": { "default": "mdi:battery-charging" },
+      "aufgaben_offen": { "default": "mdi:checkbox-marked-circle-outline" },
+      "aufgaben_ueberfaellig": { "default": "mdi:alert-circle-outline" },
+      "agenda": { "default": "mdi:calendar-text" },
+      "inbox": { "default": "mdi:inbox" },
+      "medikamente": { "default": "mdi:pill" },
+      "naechste_einnahme": { "default": "mdi:pill-multiple" },
+      "trainingszone": { "default": "mdi:speedometer" },
+      "trainingspuls": { "default": "mdi:heart-pulse" },
+      "letzter_abgleich": { "default": "mdi:sync" }
+    },
+    "binary_sensor": {
+      "training_aktiv": { "default": "mdi:rowing" },
+      "medikament_faellig": { "default": "mdi:pill" }
+    },
+    "todo": { "aufgaben": { "default": "mdi:format-list-checks" } },
+    "calendar": { "kalender": { "default": "mdi:calendar" } }
+  },
+  "services": {
+    "einnahme_erfassen": { "service": "mdi:pill" },
+    "aufgabe_erledigen": { "service": "mdi:check" }
+  }
+}

@@ -1,0 +1,23 @@
+einnahme_erfassen:
+  fields:
+    medikament:
+      required: false
+      example: "Elvanse"
+      selector:
+        text:
+    zeitpunkt:
+      required: false
+      selector:
+        datetime:
+
+aufgabe_erledigen:
+  fields:
+    uid:
+      required: true
+      selector:
+        text:
+    erledigt:
+      required: false
+      default: true
+      selector:
+        boolean:

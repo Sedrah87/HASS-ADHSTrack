@@ -1,0 +1,174 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "ADHS Track",
+        "description": "Addresses the app uses to reach your Home Assistant. At home the internal URL is enough (IP address or .local name). For use on the go, add an external https URL (own domain/reverse proxy; Nabu Casa is not required).",
+        "data": {
+          "url_intern": "Internal URL",
+          "url_extern": "External URL (optional, https)"
+        }
+      },
+      "kopplung": {
+        "title": "Pair the app",
+        "description": "Open this link on the iPhone with ADHS Track installed (e.g. tap it in the Home Assistant app):\n\n[Open in ADHS Track]({kopplungs_link})\n\nOr enter it in the app under More › Home Assistant:\n- Internal URL: `{url_intern}`\n- External URL: `{url_extern}`\n- Webhook ID: `{webhook_id}`\n\nThe webhook ID is a secret – do not share it. Then select “Submit”."
+      }
+    },
+    "error": {
+      "url_ungueltig": "Please enter a full URL starting with http:// or https://.",
+      "extern_https": "The external URL must use https (health data)."
+    },
+    "abort": {
+      "already_configured": "ADHS Track is already configured."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "ADHS Track",
+        "description": "Pairing link for the app: [Open in ADHS Track]({kopplungs_link})\n\nWebhook ID: `{webhook_id}`",
+        "data": {
+          "url_intern": "Internal URL",
+          "url_extern": "External URL (optional, https)",
+          "neuer_webhook": "Generate new webhook ID (app must be paired again)"
+        }
+      }
+    },
+    "error": {
+      "url_ungueltig": "Please enter a full URL starting with http:// or https://.",
+      "extern_https": "The external URL must use https (health data)."
+    }
+  },
+  "entity": {
+    "sensor": {
+      "recovery": {
+        "name": "Recovery"
+      },
+      "schlaf": {
+        "name": "Sleep"
+      },
+      "schlafdauer": {
+        "name": "Sleep duration"
+      },
+      "strain": {
+        "name": "Strain"
+      },
+      "ruhepuls": {
+        "name": "Resting heart rate"
+      },
+      "hrv": {
+        "name": "Heart rate variability"
+      },
+      "atemfrequenz": {
+        "name": "Respiratory rate"
+      },
+      "letzte_herzfrequenz": {
+        "name": "Latest heart rate"
+      },
+      "koffein": {
+        "name": "Caffeine"
+      },
+      "alkohol": {
+        "name": "Alcohol"
+      },
+      "fluessigkeit": {
+        "name": "Fluid intake"
+      },
+      "stimmung": {
+        "name": "Mood"
+      },
+      "energie": {
+        "name": "Energy"
+      },
+      "aufgaben_offen": {
+        "name": "Open tasks today"
+      },
+      "aufgaben_ueberfaellig": {
+        "name": "Overdue tasks"
+      },
+      "agenda": {
+        "name": "Agenda"
+      },
+      "inbox": {
+        "name": "Inbox"
+      },
+      "medikamente": {
+        "name": "Open doses today"
+      },
+      "naechste_einnahme": {
+        "name": "Next dose"
+      },
+      "trainingszone": {
+        "name": "Training zone"
+      },
+      "trainingspuls": {
+        "name": "Training heart rate"
+      },
+      "letzter_abgleich": {
+        "name": "Last sync"
+      }
+    },
+    "binary_sensor": {
+      "training_aktiv": {
+        "name": "Training active"
+      },
+      "medikament_faellig": {
+        "name": "Medication due"
+      }
+    },
+    "todo": {
+      "aufgaben": {
+        "name": "Tasks"
+      }
+    },
+    "calendar": {
+      "kalender": {
+        "name": "Calendar"
+      }
+    }
+  },
+  "services": {
+    "einnahme_erfassen": {
+      "name": "Log dose",
+      "description": "Logs a dose in ADHS Track (applied on the next sync). Without medication: all doses due today.",
+      "fields": {
+        "medikament": {
+          "name": "Medication",
+          "description": "Name or ID of the medication."
+        },
+        "zeitpunkt": {
+          "name": "Time",
+          "description": "Time of intake; default: now."
+        }
+      }
+    },
+    "aufgabe_erledigen": {
+      "name": "Complete task",
+      "description": "Checks off or reopens a task (applied on the next sync).",
+      "fields": {
+        "uid": {
+          "name": "UID",
+          "description": "Occurrence identifier (attribute “uid” of the agenda)."
+        },
+        "erledigt": {
+          "name": "Done",
+          "description": "Done (on) or open again (off)."
+        }
+      }
+    }
+  },
+  "exceptions": {
+    "medikament_unbekannt": {
+      "message": "Medication “{medikament}” is unknown."
+    },
+    "aufgabe_unbekannt": {
+      "message": "Task “{uid}” is unknown."
+    },
+    "nicht_eingerichtet": {
+      "message": "ADHS Track is not set up."
+    },
+    "nur_status": {
+      "message": "Title, due date and notes are edited in the app; only checking off is possible here."
+    }
+  }
+}

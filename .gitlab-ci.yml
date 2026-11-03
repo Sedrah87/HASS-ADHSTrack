@@ -1,0 +1,8 @@
+# Tests der Integration. hassfest läuft lokal per Docker (siehe README),
+# beim späteren GitHub-Spiegel zusätzlich als Action (hassfest + hacs/action).
+pytest:
+  image: python:3.14
+  before_script:
+    - pip install -q -r requirements_test.txt
+  script:
+    - python -m pytest -q
