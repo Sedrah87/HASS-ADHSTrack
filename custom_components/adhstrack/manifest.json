@@ -1,6 +1,10 @@
 {
   "domain": "adhstrack",
   "name": "ADHS Track",
+  "categories": [
+    "health_wellbeing",
+    "productivity_information.calendars_todos"
+  ],
   "codeowners": [
     "@Sedrah87"
   ],

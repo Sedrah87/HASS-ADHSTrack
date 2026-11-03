@@ -17,6 +17,9 @@ jobs:
       - uses: hacs/action@main
         with:
           category: integration
+          # PolyForm Noncommercial ist keine OSI-Lizenz; die Prüfung entfällt nur für eigene Läufe
+          # (eine Aufnahme in den Standard-Katalog wäre damit nicht möglich).
+          ignore: license
 
   hassfest:
     name: hassfest

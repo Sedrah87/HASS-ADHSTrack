@@ -16,7 +16,7 @@ Voraussetzung: Home Assistant 2026.11 oder neuer. Die Anbindung muss in der App 
 
 ## Installation
 
-### Manuell oder zum Testen aus diesem Repository
+### Manuell oder zum Testen
 
 1. Installiere das Add-on **Terminal & SSH** und öffne es.
 2. Klone das Repository und verlinke die Integration:
@@ -29,9 +29,17 @@ Voraussetzung: Home Assistant 2026.11 oder neuer. Die Anbindung muss in der App 
 3. Starte Home Assistant neu.
 4. Updates holst du später mit `cd /config/hass-adhstrack && git pull` und einem Neustart.
 
-### Marketplace (HACS)
+### Marketplace (HACS) – empfohlen
 
-**Einstellungen › Marketplace › Add from link**, dort `Sedrah87/HASS-ADHSTrack` eingeben. Danach „ADHS Track“ installieren und Home Assistant neu starten.
+[![Im Marketplace von Home Assistant öffnen](https://my.home-assistant.io/badges/marketplace_repository.svg)](https://my.home-assistant.io/redirect/marketplace_repository/?owner=Sedrah87&repository=HASS-ADHSTrack&category=integration)
+
+1. Klicke auf den Knopf, dann öffnet sich dein Home Assistant direkt beim Repository. Ohne Knopf geht es über **Einstellungen › Marketplace › Add from link** mit `Sedrah87/HASS-ADHSTrack`.
+2. Installiere „ADHS Track“ und starte Home Assistant neu.
+3. Richte die Integration ein:
+
+   [![Integration in Home Assistant hinzufügen](https://my.home-assistant.io/badges/config_flow_start.svg)](https://my.home-assistant.io/redirect/config_flow_start/?domain=adhstrack)
+
+Beim ersten Klick fragt my.home-assistant.io einmalig nach der Adresse deines Home Assistant.
 
 Quelle ist [github.com/Sedrah87/HASS-ADHSTrack](https://github.com/Sedrah87/HASS-ADHSTrack). [github.com/Sedrah87/HASS-ADHSTrack](https://github.com/Sedrah87/HASS-ADHSTrack) ist ein automatischer Spiegel; Issues bitte dort auf GitHub melden.
 
