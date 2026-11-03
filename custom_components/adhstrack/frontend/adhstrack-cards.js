@@ -5,7 +5,7 @@
  * damit sie unabhängig von Sprache und Entitäts-IDs funktionieren. Optional per `entity` überschreibbar.
  */
 
-const VERSION = "0.1.0";
+const VERSION = "0.2.0";
 const DOMAIN = "adhstrack";
 
 // ---------------------------------------------------------------- Hilfsfunktionen
@@ -66,13 +66,15 @@ function eintraege(hass, config, { tage = 1, mitUeberfaelligen = true } = {}) {
   for (const a of (agenda && agenda.attributes.aufgaben) || []) {
     const ueberfaellig = a.datum < heute && a.ueberfaellig && !a.erledigt;
     if (!(a.datum >= heute && a.datum <= bis) && !(mitUeberfaelligen && ueberfaellig)) continue;
+    if (config.erledigte_ausblenden && a.erledigt) continue;
     liste.push({ art: "aufgabe", datum: ueberfaellig ? "ueberfaellig" : a.datum, start: a.start, ende: a.ende, titel: a.titel,
       erledigt: a.erledigt, ueberfaellig: a.ueberfaellig, uid: a.uid, farbe: a.farbe, liste: a.liste });
   }
-  if (config.zeige_medikamente !== false) {
+  if (!config.medikamente_ausblenden) {
     for (const m of (meds && meds.attributes.medikamente) || []) {
       for (const t of m.plan || []) {
         if (t.datum < heute || t.datum > bis) continue;
+        if (config.eingenommene_ausblenden && t.status !== "offen") continue;
         liste.push({ art: "einnahme", datum: t.datum, start: t.einnahme_um, titel: `${m.name} ${m.dosis || ""} ${m.einheit || ""}`.trim(),
           status: t.status, erledigt: t.status !== "offen", med_id: m.id, farbe: m.farbe, kritisch: m.kritisch });
       }
@@ -109,6 +111,35 @@ const BASIS_STIL = `
   .segment button.an { background: var(--primary-color); color: var(--text-primary-color, #fff); }
 `;
 
+const ALTE_SCHALTER = {
+  zeige_medikamente: "medikamente_ausblenden",
+  umschalter: "umschalter_ausblenden",
+  ohne_plan: "ohne_plan_ausblenden",
+  empfehlung: "empfehlung_ausblenden",
+};
+
+// Gemeinsame Editor-Felder
+const FELD = {
+  titel: { name: "titel", selector: { text: {} } },
+  medikamente: { name: "medikamente_ausblenden", selector: { boolean: {} } },
+  eingenommene: { name: "eingenommene_ausblenden", selector: { boolean: {} } },
+  erledigte: { name: "erledigte_ausblenden", selector: { boolean: {} } },
+  umschalter: { name: "umschalter_ausblenden", selector: { boolean: {} } },
+  von: { name: "von", selector: { number: { min: 0, max: 23, mode: "box" } } },
+  bis: { name: "bis", selector: { number: { min: 1, max: 24, mode: "box" } } },
+};
+const BESCHRIFTUNG = {
+  titel: "Titel", zeitraum: "Zeitraum", tage: "Zeitraum", groesse: "Größe", modus: "Darstellung", anzahl: "Einträge anzeigen",
+  von: "Zeitleiste von (Uhr)", bis: "Zeitleiste bis (Uhr)",
+  medikamente_ausblenden: "Einnahmen ausblenden",
+  eingenommene_ausblenden: "Eingenommene Medikamente ausblenden",
+  erledigte_ausblenden: "Erledigte Aufgaben ausblenden",
+  umschalter_ausblenden: "Umschalter ausblenden",
+  ohne_plan_ausblenden: "Medikamente ohne feste Zeit ausblenden",
+  empfehlung_ausblenden: "Empfehlungstext ausblenden",
+};
+const beschriftung = (s) => BESCHRIFTUNG[s.name] || s.name;
+
 class AdhsBasisKarte extends HTMLElement {
   constructor() {
     super();
@@ -117,7 +148,14 @@ class AdhsBasisKarte extends HTMLElement {
   }
 
   setConfig(config) {
-    this._config = { ...(this.constructor.standard || {}), ...(config || {}) };
+    // Alle Schalter heißen „… ausblenden“ und sind standardmäßig aus – so zeigt der Editor dasselbe wie die Karte.
+    // Ältere Konfigurationen mit „… anzeigen: false“ werden übernommen.
+    const c = { ...(config || {}) };
+    for (const [alt, neu] of Object.entries(ALTE_SCHALTER)) {
+      if (c[alt] === false && c[neu] === undefined) c[neu] = true;
+      delete c[alt];
+    }
+    this._config = { ...(this.constructor.standard || {}), ...c };
     this._signatur = "";
     if (this._hass) this._zeichnen();
   }
@@ -157,7 +195,8 @@ class AdhsBasisKarte extends HTMLElement {
 
   getCardSize() { return 3; }
 
-  static getStubConfig() { return {}; }
+  // Neue Karten bekommen alle Standardwerte, damit der Editor sie anzeigt.
+  static getStubConfig() { return { ...(this.standard || {}) }; }
 }
 
 function zeileHtml(hass, e, { mitAktionen = true, heute = heuteText() } = {}) {
@@ -178,12 +217,12 @@ function zeileHtml(hass, e, { mitAktionen = true, heute = heuteText() } = {}) {
 
 class AdhsAgendaKarte extends AdhsBasisKarte {
   static schluessel = ["agenda", "medikamente"];
-  static standard = { zeitraum: "heute", umschalter: true, zeige_medikamente: true };
+  static standard = { zeitraum: "heute" };
 
   inhalt(hass, config) {
     const tage = { heute: 1, "3": 3, "7": 7 }[this._zeitraum || config.zeitraum] || 1;
     const liste = eintraege(hass, config, { tage });
-    const segmente = config.umschalter
+    const segmente = !config.umschalter_ausblenden
       ? `<div class="segment">${[["heute", "Heute"], ["3", "3 Tage"], ["7", "7 Tage"]]
           .map(([w, t]) => `<button data-zeitraum="${w}" class="${(this._zeitraum || config.zeitraum) === w ? "an" : ""}">${t}</button>`).join("")}</div>`
       : "";
@@ -214,24 +253,21 @@ class AdhsAgendaKarte extends AdhsBasisKarte {
   static getConfigForm() {
     return {
       schema: [
-        { name: "titel", selector: { text: {} } },
+        FELD.titel,
         { name: "zeitraum", selector: { select: { mode: "dropdown", options: [
           { value: "heute", label: "Heute" }, { value: "3", label: "3 Tage" }, { value: "7", label: "7 Tage" }] } } },
-        { name: "umschalter", selector: { boolean: {} } },
-        { name: "zeige_medikamente", selector: { boolean: {} } },
+        FELD.umschalter, FELD.erledigte, FELD.eingenommene, FELD.medikamente,
       ],
-      computeLabel: (s) => ({ titel: "Titel", zeitraum: "Zeitraum", umschalter: "Umschalter anzeigen", zeige_medikamente: "Einnahmen anzeigen" })[s.name],
+      computeLabel: beschriftung,
     };
   }
-
-  static getStubConfig() { return { zeitraum: "heute" }; }
 }
 
 // ---------------------------------------------------------------- Tagesplanung S / M / L
 
 class AdhsTagesplanungKarte extends AdhsBasisKarte {
   static schluessel = ["agenda", "medikamente"];
-  static standard = { groesse: "m", zeige_medikamente: true, von: 6, bis: 23 };
+  static standard = { groesse: "m", von: 6, bis: 23 };
   static stil = `
     .fortschritt { display: flex; align-items: center; gap: 16px; }
     .zahl { font-size: 2em; font-weight: 600; }
@@ -289,25 +325,114 @@ class AdhsTagesplanungKarte extends AdhsBasisKarte {
   static getConfigForm() {
     return {
       schema: [
-        { name: "titel", selector: { text: {} } },
+        FELD.titel,
         { name: "groesse", selector: { select: { mode: "dropdown", options: [
           { value: "s", label: "Klein" }, { value: "m", label: "Mittel" }, { value: "l", label: "Groß (Zeitleiste)" }] } } },
-        { name: "zeige_medikamente", selector: { boolean: {} } },
-        { name: "von", selector: { number: { min: 0, max: 23, mode: "box" } } },
-        { name: "bis", selector: { number: { min: 1, max: 24, mode: "box" } } },
+        FELD.erledigte, FELD.eingenommene, FELD.medikamente, FELD.von, FELD.bis,
       ],
-      computeLabel: (s) => ({ titel: "Titel", groesse: "Größe", zeige_medikamente: "Einnahmen anzeigen", von: "Zeitleiste von (Uhr)", bis: "Zeitleiste bis (Uhr)" })[s.name],
+      computeLabel: beschriftung,
     };
   }
+}
 
-  static getStubConfig() { return { groesse: "m" }; }
+// ---------------------------------------------------------------- Kalender 3 / 7 Tage (Zeitleiste wie Tagesplanung groß)
+
+class AdhsKalenderKarte extends AdhsBasisKarte {
+  static schluessel = ["agenda", "medikamente"];
+  static standard = { tage: "3", von: 6, bis: 23 };
+  static stil = `
+    .kal { display: grid; gap: 0 4px; }
+    .tagkopf { text-align: center; font-size: 0.85em; font-weight: 600; padding-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .tagkopf.heute { color: var(--primary-color); }
+    .achse, .spalte { position: relative; }
+    .spalte { border-left: 1px solid var(--divider-color); }
+    .stunde { position: absolute; right: 4px; font-size: 0.7em; color: var(--secondary-text-color); transform: translateY(-50%); }
+    .linie { position: absolute; left: 0; right: 0; border-top: 1px dashed var(--divider-color); }
+    .block { position: absolute; border-radius: 4px; padding: 1px 4px; font-size: 0.72em; line-height: 1.25; overflow: hidden;
+             white-space: nowrap; text-overflow: ellipsis; color: var(--text-primary-color, #fff); box-sizing: border-box; }
+    .block.erledigt { opacity: .45; text-decoration: line-through; }
+    .jetzt { position: absolute; left: 0; right: 0; border-top: 2px solid var(--error-color); z-index: 2; }
+  `;
+
+  inhalt(hass, config) {
+    const tage = Number(this._tage || config.tage) === 7 ? 7 : 3;
+    const von = Number(config.von), bis = Number(config.bis), hoehe = tage === 7 ? 28 : 34;
+    const liste = eintraege(hass, config, { tage, mitUeberfaelligen: false });
+    const segmente = !config.umschalter_ausblenden
+      ? `<div class="segment">${[["3", "3 Tage"], ["7", "7 Tage"]]
+          .map(([w, t]) => `<button data-tage="${w}" class="${String(tage) === w ? "an" : ""}">${t}</button>`).join("")}</div>`
+      : "";
+    const kopf = `<div class="kopf"><span class="titel">${esc(config.titel || "Kalender")}</span>${segmente}</div>`;
+    const stundeVon = (iso) => { const d = new Date(iso); return d.getHours() + d.getMinutes() / 60; };
+    const gesamt = (bis - von) * hoehe;
+
+    let achse = "";
+    for (let h = von; h <= bis; h++) achse += `<div class="stunde" style="top:${(h - von) * hoehe}px">${String(h).padStart(2, "0")}</div>`;
+    let linien = "";
+    for (let h = von; h <= bis; h++) linien += `<div class="linie" style="top:${(h - von) * hoehe}px"></div>`;
+
+    let koepfe = `<div></div>`, spalten = `<div class="achse" style="height:${gesamt}px">${achse}</div>`;
+    for (let i = 0; i < tage; i++) {
+      const datum = plusTage(i);
+      const [j, m, t] = datum.split("-").map(Number);
+      const tagName = i === 0 ? "Heute" : new Date(j, m - 1, t).toLocaleDateString(sprache(hass), { weekday: "short", day: "numeric" });
+      koepfe += `<div class="tagkopf ${i === 0 ? "heute" : ""}">${esc(tagName)}</div>`;
+
+      // Überlappende Einträge nebeneinander (Spuren)
+      const amTag = liste.filter((e) => e.datum === datum && e.start).map((e) => {
+        const s = Math.max(von, stundeVon(e.start));
+        const ende = Math.min(bis, e.ende ? stundeVon(e.ende) : s + 0.5);
+        return { ...e, s, ende: Math.max(ende, s + 0.4) };
+      }).filter((e) => e.s < bis).sort((a, b) => a.s - b.s);
+      const spurEnde = [];
+      for (const e of amTag) {
+        let spur = spurEnde.findIndex((x) => x <= e.s);
+        if (spur < 0) { spur = spurEnde.length; spurEnde.push(0); }
+        spurEnde[spur] = e.ende;
+        e.spur = spur;
+      }
+      const spuren = Math.max(1, spurEnde.length);
+      let bloecke = "";
+      for (const e of amTag) {
+        const farbe = e.art === "einnahme" ? "var(--warning-color, #f4b400)" : esc(e.farbe || "var(--primary-color)");
+        const breite = 100 / spuren;
+        bloecke += `<div class="block ${e.erledigt ? "erledigt" : ""}" title="${esc(uhrzeit(hass, e.start) + " " + e.titel)}"
+          style="top:${(e.s - von) * hoehe}px;height:${Math.max(14, (e.ende - e.s) * hoehe - 2)}px;left:calc(${e.spur * breite}% + 2px);width:calc(${breite}% - 4px);background:${farbe}">${e.art === "einnahme" ? "💊 " : ""}${esc(e.titel)}</div>`;
+      }
+      let jetzt = "";
+      if (i === 0) {
+        const n = new Date(), h = n.getHours() + n.getMinutes() / 60;
+        if (h >= von && h <= bis) jetzt = `<div class="jetzt" style="top:${(h - von) * hoehe}px"></div>`;
+      }
+      spalten += `<div class="spalte" style="height:${gesamt}px">${linien}${bloecke}${jetzt}</div>`;
+    }
+    return kopf + `<div class="kal" style="grid-template-columns: 2.4em repeat(${tage}, 1fr)">${koepfe}${spalten}</div>`;
+  }
+
+  verdrahten(wurzel) {
+    wurzel.querySelectorAll("[data-tage]").forEach((el) =>
+      el.addEventListener("click", () => { this._tage = el.dataset.tage; this._zeichnen(); }));
+  }
+
+  getCardSize() { return 9; }
+
+  static getConfigForm() {
+    return {
+      schema: [
+        FELD.titel,
+        { name: "tage", selector: { select: { mode: "dropdown", options: [{ value: "3", label: "3 Tage" }, { value: "7", label: "7 Tage" }] } } },
+        FELD.umschalter, FELD.erledigte, FELD.eingenommene, FELD.medikamente, FELD.von, FELD.bis,
+      ],
+      computeLabel: beschriftung,
+    };
+  }
 }
 
 // ---------------------------------------------------------------- Uhr 6 h / 12 h
 
 class AdhsUhrKarte extends AdhsBasisKarte {
   static schluessel = ["agenda", "medikamente"];
-  static standard = { modus: "12h", zeige_medikamente: true };
+  static standard = { modus: "12h" };
   static stil = `svg { width: 100%; max-width: 320px; display: block; margin: 0 auto; } .legende { text-align: center; margin-top: 8px; }`;
 
   inhalt(hass, config) {
@@ -367,15 +492,13 @@ class AdhsUhrKarte extends AdhsBasisKarte {
   static getConfigForm() {
     return {
       schema: [
-        { name: "titel", selector: { text: {} } },
+        FELD.titel,
         { name: "modus", selector: { select: { mode: "dropdown", options: [{ value: "12h", label: "12 Stunden" }, { value: "6h", label: "6 Stunden" }] } } },
-        { name: "zeige_medikamente", selector: { boolean: {} } },
+        FELD.erledigte, FELD.eingenommene, FELD.medikamente,
       ],
-      computeLabel: (s) => ({ titel: "Titel", modus: "Darstellung", zeige_medikamente: "Einnahmen anzeigen" })[s.name],
+      computeLabel: beschriftung,
     };
   }
-
-  static getStubConfig() { return { modus: "12h" }; }
 }
 
 // ---------------------------------------------------------------- Inbox
@@ -395,8 +518,8 @@ class AdhsInboxKarte extends AdhsBasisKarte {
 
   static getConfigForm() {
     return {
-      schema: [{ name: "titel", selector: { text: {} } }, { name: "anzahl", selector: { number: { min: 0, max: 10, mode: "box" } } }],
-      computeLabel: (s) => ({ titel: "Titel", anzahl: "Einträge anzeigen" })[s.name],
+      schema: [FELD.titel, { name: "anzahl", selector: { number: { min: 0, max: 10, mode: "box" } } }],
+      computeLabel: beschriftung,
     };
   }
 }
@@ -436,14 +559,14 @@ class AdhsRecoveryKarte extends AdhsBasisKarte {
     return `<div class="kopf"><span class="titel">${esc(config.titel || "Recovery")}</span><span class="neben">${esc(a.kategorie || "")}</span></div>
       <div class="reihe">${ring(wert / 100, 110, 10, farbe, `${Math.round(wert)}%`)}
         <div>${a.empfehlung_titel ? `<div class="empf-titel">${esc(a.empfehlung_titel)}</div>` : ""}
-          ${a.empfehlung_text && config.empfehlung !== false ? `<div class="klein">${esc(a.empfehlung_text)}</div>` : ""}
+          ${a.empfehlung_text && !config.empfehlung_ausblenden ? `<div class="klein">${esc(a.empfehlung_text)}</div>` : ""}
           ${schlaf && !isNaN(Number(schlaf.state)) ? `<div class="klein" style="margin-top:6px">Schlaf ${Math.round(Number(schlaf.state))}%</div>` : ""}</div></div>`;
   }
 
   static getConfigForm() {
     return {
-      schema: [{ name: "titel", selector: { text: {} } }, { name: "empfehlung", selector: { boolean: {} } }],
-      computeLabel: (s) => ({ titel: "Titel", empfehlung: "Empfehlungstext anzeigen" })[s.name],
+      schema: [FELD.titel, { name: "empfehlung_ausblenden", selector: { boolean: {} } }],
+      computeLabel: beschriftung,
     };
   }
 }
@@ -467,7 +590,7 @@ class AdhsStrainKarte extends AdhsBasisKarte {
   }
 
   static getConfigForm() {
-    return { schema: [{ name: "titel", selector: { text: {} } }], computeLabel: () => "Titel" };
+    return { schema: [FELD.titel], computeLabel: beschriftung };
   }
 }
 
@@ -475,7 +598,7 @@ class AdhsStrainKarte extends AdhsBasisKarte {
 
 class AdhsMedikamenteKarte extends AdhsBasisKarte {
   static schluessel = ["medikamente"];
-  static standard = { ohne_plan: true };
+  static standard = {};
 
   inhalt(hass, config) {
     const z = zustand(hass, "medikamente", config.entity);
@@ -486,7 +609,7 @@ class AdhsMedikamenteKarte extends AdhsBasisKarte {
       ${faellig.length ? `<button class="knopf" data-alle="1">Alle fälligen einnehmen</button>` : ""}</div>`;
     let zeilen = "";
     for (const m of meds) {
-      const termine = (m.plan || []).filter((t) => t.datum === heute);
+      const termine = (m.plan || []).filter((t) => t.datum === heute && !(config.eingenommene_ausblenden && t.status !== "offen"));
       const punkt = `<span class="punkt" style="background:${esc(m.farbe || "var(--primary-color)")}"></span>`;
       const titel = `${esc(m.name)} <span class="neben">${esc(`${m.dosis || ""} ${m.einheit || ""}`.trim())}</span>${m.kritisch ? " ⚠️" : ""}`;
       for (const t of termine) {
@@ -495,7 +618,7 @@ class AdhsMedikamenteKarte extends AdhsBasisKarte {
           : `<span class="status">${t.status === "eingenommen" ? "✓ eingenommen" : "übersprungen"}</span>`;
         zeilen += `<div class="zeile ${t.status !== "offen" ? "erledigt" : ""}">${punkt}<span class="zeit">${uhrzeit(hass, t.einnahme_um)}</span><span class="text">${titel}</span>${knopf}</div>`;
       }
-      if (!termine.length && !(m.plan || []).length && config.ohne_plan) {
+      if (!termine.length && !(m.plan || []).length && !config.ohne_plan_ausblenden) {
         zeilen += `<div class="zeile">${punkt}<span class="zeit">–</span><span class="text">${titel}</span><button class="knopf zweit" data-med="${esc(m.id)}">Einnehmen</button></div>`;
       }
     }
@@ -506,8 +629,8 @@ class AdhsMedikamenteKarte extends AdhsBasisKarte {
 
   static getConfigForm() {
     return {
-      schema: [{ name: "titel", selector: { text: {} } }, { name: "ohne_plan", selector: { boolean: {} } }],
-      computeLabel: (s) => ({ titel: "Titel", ohne_plan: "Medikamente ohne feste Zeit anzeigen" })[s.name],
+      schema: [FELD.titel, { name: "eingenommene_ausblenden", selector: { boolean: {} } }, { name: "ohne_plan_ausblenden", selector: { boolean: {} } }],
+      computeLabel: beschriftung,
     };
   }
 }
@@ -517,6 +640,7 @@ class AdhsMedikamenteKarte extends AdhsBasisKarte {
 const KARTEN = [
   ["adhstrack-agenda-card", AdhsAgendaKarte, "ADHS Track: Agenda", "Aufgaben und Einnahmen für heute, 3 oder 7 Tage – abhakbar."],
   ["adhstrack-tagesplanung-card", AdhsTagesplanungKarte, "ADHS Track: Tagesplanung", "Wie das Widget: klein, mittel oder groß mit Zeitleiste."],
+  ["adhstrack-kalender-card", AdhsKalenderKarte, "ADHS Track: Kalender", "Zeitleiste der nächsten 3 oder 7 Tage mit Aufgaben und Einnahmen."],
   ["adhstrack-uhr-card", AdhsUhrKarte, "ADHS Track: Uhr", "Zifferblatt mit Terminen der nächsten 6 oder 12 Stunden."],
   ["adhstrack-inbox-card", AdhsInboxKarte, "ADHS Track: Inbox", "Offene Inbox-Einträge."],
   ["adhstrack-recovery-card", AdhsRecoveryKarte, "ADHS Track: Recovery", "Recovery-Ring mit Empfehlung."],

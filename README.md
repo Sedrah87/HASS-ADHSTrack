@@ -99,9 +99,16 @@ Hat die App dasselbe Medikament schon in diesem Zeitfenster (±90 min) erfasst, 
 
 Alle Karten findest du unter **Karte hinzufügen**, Suchbegriff „ADHS Track“. Sie lassen sich ohne YAML einrichten.
 
+Gemeinsame Schalter (alle standardmäßig aus): `erledigte_ausblenden`, `eingenommene_ausblenden`, `medikamente_ausblenden` und `umschalter_ausblenden`. Ältere Optionen wie `zeige_medikamente: false` werden weiter verstanden.
+
 ```yaml
 type: custom:adhstrack-agenda-card       # Heute / 3 / 7 Tage, abhakbar
 zeitraum: heute
+erledigte_ausblenden: true               # optional
+eingenommene_ausblenden: true            # optional
+---
+type: custom:adhstrack-kalender-card     # Zeitleiste der nächsten 3 oder 7 Tage
+tage: "7"
 ---
 type: custom:adhstrack-tagesplanung-card # groesse: s | m | l (Zeitleiste)
 groesse: l

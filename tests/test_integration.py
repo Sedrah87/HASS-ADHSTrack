@@ -229,5 +229,5 @@ async def test_dashboard_karten_werden_ausgeliefert(hass: HomeAssistant, eintrag
     antwort = await client.get("/adhstrack_static/adhstrack-cards.js")
     assert antwort.status == 200
     text = await antwort.text()
-    for karte in ("adhstrack-agenda-card", "adhstrack-tagesplanung-card", "adhstrack-uhr-card", "adhstrack-medikamente-card"):
+    for karte in ("adhstrack-agenda-card", "adhstrack-kalender-card", "adhstrack-tagesplanung-card", "adhstrack-uhr-card", "adhstrack-medikamente-card"):
         assert karte in text
