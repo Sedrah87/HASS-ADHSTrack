@@ -152,3 +152,15 @@ docker run --rm --platform linux/amd64 -v "$PWD/custom_components:/github/worksp
 ```
 
 Das Protokoll zwischen App und Integration (JSON, Version `v: 1`) ist im App-Repository unter `Doku/HOME_ASSISTANT_2026-11-03.md` beschrieben.
+
+## Lizenz
+
+[PolyForm Noncommercial 1.0.0](LICENSE.md) (SPDX: `PolyForm-Noncommercial-1.0.0`) – © 2026 Sedrah87.
+
+Erlaubt ist die nicht-kommerzielle Nutzung: privat, als Hobby, zu Lern- und Forschungszwecken sowie durch gemeinnützige Organisationen. Ändern und Weitergeben unter denselben Bedingungen ist ebenfalls erlaubt. **Verkauf und jede andere kommerzielle Nutzung sind nicht erlaubt.** Wer eine kommerzielle Lizenz möchte, fragt bitte direkt an.
+
+Name und Logo „ADHS Track“ fallen nicht unter diese Lizenz und dürfen nicht für eigene Produkte oder abgewandelte Versionen verwendet werden.
+
+## Hinweis
+
+ADHS Track und diese Integration sind **kein Medizinprodukt**. Sie ersetzen keine ärztliche Beratung. Erinnerungen und Ereignisse können ausbleiben oder verspätet eintreffen, zum Beispiel ohne Netz, wenn Home Assistant nicht läuft oder die App lange nicht abgeglichen hat. Verlass dich bei der Einnahme von Medikamenten nicht allein darauf. Die Nutzung erfolgt ohne Gewähr, siehe Abschnitt „No Liability“ der Lizenz.
