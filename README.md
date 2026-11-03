@@ -31,7 +31,9 @@ Voraussetzung: Home Assistant 2026.11 oder neuer. Die Anbindung muss in der App 
 
 ### Marketplace (HACS)
 
-Der Marketplace installiert nur aus öffentlichen GitHub-Repositories. Die Struktur dieses Repositories ist dafür schon vorbereitet (`hacs.json`, `custom_components/adhstrack/`, `brand/`). Sobald es einen GitHub-Spiegel gibt: **Einstellungen › Marketplace › Add from link**.
+**Einstellungen › Marketplace › Add from link**, dort `Sedrah87/HASS-ADHSTrack` eingeben. Danach „ADHS Track“ installieren und Home Assistant neu starten.
+
+Quelle ist [github.com/Sedrah87/HASS-ADHSTrack](https://github.com/Sedrah87/HASS-ADHSTrack). [github.com/Sedrah87/HASS-ADHSTrack](https://github.com/Sedrah87/HASS-ADHSTrack) ist ein automatischer Spiegel; Issues bitte dort auf GitHub melden.
 
 ## Einrichtung
 
