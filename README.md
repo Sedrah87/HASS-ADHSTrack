@@ -12,7 +12,7 @@ Verbindet die iOS-App **ADHS Track** mit Home Assistant. Du brauchst weder Nabu 
 - **Training live**: Puls, Trainingszone und Tempohinweis während Rudern oder Yoga, plus ein Ereignis bei Zonenwechsel.
 - **Dashboard-Karten** als Gegenstück zu den App-Widgets. Sie werden automatisch geladen.
 
-Voraussetzung: Home Assistant 2026.11 oder neuer. Die Anbindung muss in der App für dein Konto freigeschaltet sein.
+Voraussetzung: Home Assistant 2025.10 oder neuer. Bis 2026.10 installierst du über HACS, ab 2026.11 über den eingebauten Marketplace. Die Anbindung muss in der App für dein Konto freigeschaltet sein.
 
 ## Installation
 
@@ -29,11 +29,11 @@ Voraussetzung: Home Assistant 2026.11 oder neuer. Die Anbindung muss in der App 
 3. Starte Home Assistant neu.
 4. Updates holst du später mit `cd /config/hass-adhstrack && git pull` und einem Neustart.
 
-### Marketplace (HACS) – empfohlen
+### HACS / Marketplace – empfohlen
 
-[![Im Marketplace von Home Assistant öffnen](https://my.home-assistant.io/badges/marketplace_repository.svg)](https://my.home-assistant.io/redirect/marketplace_repository/?owner=Sedrah87&repository=HASS-ADHSTrack&category=integration)
+[![In HACS bzw. im Marketplace öffnen](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=Sedrah87&repository=HASS-ADHSTrack&category=integration)
 
-1. Klicke auf den Knopf, dann öffnet sich dein Home Assistant direkt beim Repository. Ohne Knopf geht es über **Einstellungen › Marketplace › Add from link** mit `Sedrah87/HASS-ADHSTrack`.
+1. Klicke auf den Knopf, dann öffnet sich dein Home Assistant direkt beim Repository: bis 2026.10 in HACS, ab 2026.11 im Marketplace. Ohne Knopf trägst du `Sedrah87/HASS-ADHSTrack` von Hand ein: in HACS unter **⋮ › Benutzerdefinierte Repositories** (Typ „Integration“), im Marketplace unter **Einstellungen › Marketplace › Add from link**.
 2. Installiere „ADHS Track“ und starte Home Assistant neu.
 3. Richte die Integration ein:
 
@@ -159,6 +159,15 @@ uv venv --python 3.14 .venv
 uv pip install --python .venv/bin/python -r requirements_test.txt
 .venv/bin/python -m pytest
 docker run --rm --platform linux/amd64 -v "$PWD/custom_components:/github/workspace/custom_components" ghcr.io/home-assistant/hassfest
+```
+
+Vor dem ersten Commit die Privatsphäre-Prüfung aktivieren. Sie verhindert, dass private Angaben in Dateien, Commit-Nachrichten oder als Autor ins Repository gelangen:
+
+```sh
+git config core.hooksPath .githooks
+mkdir -p ~/.config/hass-adhstrack
+$EDITOR ~/.config/hass-adhstrack/verbotene-muster.txt   # ein Muster pro Zeile
+scripts/privatsphaere_pruefen.sh historie               # gesamte Historie prüfen
 ```
 
 Das Protokoll zwischen App und Integration (JSON, Version `v: 1`) ist im App-Repository unter `Doku/HOME_ASSISTANT_2026-11-03.md` beschrieben.

@@ -1,0 +1,3 @@
+#!/bin/sh
+# Prüft alle Commits und Tags, die gepusht werden sollen (gesamte lokale Historie, Repo ist klein).
+exec "$(git rev-parse --show-toplevel)/scripts/privatsphaere_pruefen.sh" historie
