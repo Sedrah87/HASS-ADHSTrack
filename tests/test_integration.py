@@ -218,3 +218,16 @@ async def test_config_flow(hass: HomeAssistant) -> None:
     assert ergebnis["type"] is FlowResultType.CREATE_ENTRY
     assert ergebnis["data"][CONF_URL_INTERN] == "http://192.168.1.5:8123"
     assert len(ergebnis["data"][CONF_WEBHOOK_ID]) > 20
+
+
+async def test_dashboard_karten_werden_ausgeliefert(hass: HomeAssistant, eintrag, hass_client_no_auth) -> None:
+    from homeassistant.components.frontend import DATA_EXTRA_MODULE_URL
+
+    urls = list(hass.data[DATA_EXTRA_MODULE_URL].urls)
+    assert any(u.startswith("/adhstrack_static/adhstrack-cards.js") for u in urls)
+    client = await hass_client_no_auth()
+    antwort = await client.get("/adhstrack_static/adhstrack-cards.js")
+    assert antwort.status == 200
+    text = await antwort.text()
+    for karte in ("adhstrack-agenda-card", "adhstrack-tagesplanung-card", "adhstrack-uhr-card", "adhstrack-medikamente-card"):
+        assert karte in text
