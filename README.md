@@ -22,7 +22,7 @@ Voraussetzung: Home Assistant 2026.11 oder neuer. Die Anbindung muss in der App 
 2. Klone das Repository und verlinke die Integration:
    ```sh
    cd /config
-   git clone https://github.com/Sedrah87/HASS-ADHSTrack.git
+   git clone https://github.com/Sedrah87/HASS-ADHSTrack.git hass-adhstrack
    mkdir -p custom_components
    ln -s /config/hass-adhstrack/custom_components/adhstrack custom_components/adhstrack
    ```
@@ -41,7 +41,7 @@ Voraussetzung: Home Assistant 2026.11 oder neuer. Die Anbindung muss in der App 
 
 Beim ersten Klick fragt my.home-assistant.io einmalig nach der Adresse deines Home Assistant.
 
-Quelle ist [github.com/Sedrah87/HASS-ADHSTrack](https://github.com/Sedrah87/HASS-ADHSTrack). [github.com/Sedrah87/HASS-ADHSTrack](https://github.com/Sedrah87/HASS-ADHSTrack) ist ein automatischer Spiegel; Issues bitte dort auf GitHub melden.
+Fehler und Wünsche bitte als [Issue auf GitHub](https://github.com/Sedrah87/HASS-ADHSTrack/issues) melden.
 
 ## Einrichtung
 

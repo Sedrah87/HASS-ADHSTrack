@@ -1,5 +1,4 @@
 # Prüfungen für den HA-Marketplace (HACS-Action + hassfest) und die Tests.
-# Dieses Repo ist ein Spiegel von github.com/Sedrah87/HASS-ADHSTrack – Änderungen nur dort.
 name: Validate
 
 on:
