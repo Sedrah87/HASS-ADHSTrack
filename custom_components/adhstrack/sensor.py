@@ -51,7 +51,7 @@ def _ueberfaellig(d: AdhsDaten) -> list[dict[str, Any]]:
 
 
 def _kurz(aufgabe: dict[str, Any]) -> dict[str, Any]:
-    return {k: aufgabe.get(k) for k in ("uid", "titel", "start", "erledigt", "ueberfaellig", "liste")}
+    return {k: aufgabe.get(k) for k in ("uid", "titel", "start", "erledigt", "ueberfaellig", "liste", "ort")}
 
 
 def _naechste_einnahme(d: AdhsDaten) -> datetime | None:

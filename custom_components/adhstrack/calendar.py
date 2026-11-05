@@ -35,12 +35,14 @@ class AdhsKalender(AdhsEntity, CalendarEntity):
                 continue
             ende = parse_zeit(a.get("ende")) or start + _STANDARD_DAUER
             haken = "✓ " if a.get("erledigt") else ""
+            ort = a.get("ort") or {}
             termine.append(
                 CalendarEvent(
                     start=dt_util.as_local(start),
                     end=dt_util.as_local(ende),
                     summary=f"{haken}{a.get('titel') or ''}",
                     description=a.get("notiz"),
+                    location=ort.get("adresse") or ort.get("bezeichnung"),
                     uid=f"aufgabe_{a['uid']}",
                 )
             )

@@ -5,7 +5,7 @@
  * damit sie unabhängig von Sprache und Entitäts-IDs funktionieren. Optional per `entity` überschreibbar.
  */
 
-const VERSION = "0.2.0";
+const VERSION = "0.3.0";
 const DOMAIN = "adhstrack";
 
 // ---------------------------------------------------------------- Hilfsfunktionen
@@ -56,6 +56,24 @@ function esc(text) {
   return String(text ?? "").replace(/[&<>"']/g, (z) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[z]);
 }
 
+// Ort-Erinnerungen (App-Schema V13): Symbol je Auslöser wie in der App.
+const ORT_SYMBOL = { ankommen: "mdi:map-marker", verlassen: "mdi:map-marker-off", autoEinsteigen: "mdi:car", autoAussteigen: "mdi:car-arrow-right" };
+const ORT_AUSLOESER = { ankommen: "Ankommen", verlassen: "Verlassen", autoEinsteigen: "Einsteigen", autoAussteigen: "Aussteigen" };
+
+/** Ort als kurzer Text, z. B. „Supermarkt · Ankommen“ (Auto-Auslöser nur „Einsteigen“/„Aussteigen“). */
+function ortText(ort) {
+  if (!ort) return "";
+  const ausloeser = ORT_AUSLOESER[ort.ausloeser] || "";
+  const name = ort.bezeichnung || ort.name || "";
+  return name && name !== ausloeser ? `${name} · ${ausloeser}` : ausloeser || name;
+}
+
+function ortHtml(ort) {
+  if (!ort) return "";
+  const titel = [ortText(ort), ort.adresse, ort.umkreis ? `Umkreis ${Math.round(ort.umkreis)} m` : ""].filter(Boolean).join(" – ");
+  return `<span class="ort" title="${esc(titel)}"><ha-icon icon="${ORT_SYMBOL[ort.ausloeser] || "mdi:map-marker"}"></ha-icon>${esc(ortText(ort))}</span>`;
+}
+
 /** Aufgaben und Einnahmen als gemeinsame, nach Zeit sortierte Einträge. */
 function eintraege(hass, config, { tage = 1, mitUeberfaelligen = true } = {}) {
   const agenda = zustand(hass, "agenda", config.entity);
@@ -68,7 +86,8 @@ function eintraege(hass, config, { tage = 1, mitUeberfaelligen = true } = {}) {
     if (!(a.datum >= heute && a.datum <= bis) && !(mitUeberfaelligen && ueberfaellig)) continue;
     if (config.erledigte_ausblenden && a.erledigt) continue;
     liste.push({ art: "aufgabe", datum: ueberfaellig ? "ueberfaellig" : a.datum, start: a.start, ende: a.ende, titel: a.titel,
-      erledigt: a.erledigt, ueberfaellig: a.ueberfaellig, uid: a.uid, farbe: a.farbe, liste: a.liste });
+      erledigt: a.erledigt, ueberfaellig: a.ueberfaellig, uid: a.uid, farbe: a.farbe, liste: a.liste,
+      ort: config.orte_ausblenden ? null : a.ort });
   }
   if (!config.medikamente_ausblenden) {
     for (const m of (meds && meds.attributes.medikamente) || []) {
@@ -108,6 +127,8 @@ const BASIS_STIL = `
   .gruppe.warn { color: var(--error-color); }
   .segment { display: inline-flex; border: 1px solid var(--divider-color); border-radius: 16px; overflow: hidden; }
   .segment button { border: none; background: none; padding: 3px 10px; cursor: pointer; font: inherit; font-size: 0.85em; color: var(--primary-text-color); }
+  .ort { display: inline-flex; align-items: center; gap: 2px; margin-left: 6px; font-size: 0.85em; color: var(--secondary-text-color); }
+  .ort ha-icon { --mdc-icon-size: 14px; }
   .segment button.an { background: var(--primary-color); color: var(--text-primary-color, #fff); }
 `;
 
@@ -124,6 +145,7 @@ const FELD = {
   medikamente: { name: "medikamente_ausblenden", selector: { boolean: {} } },
   eingenommene: { name: "eingenommene_ausblenden", selector: { boolean: {} } },
   erledigte: { name: "erledigte_ausblenden", selector: { boolean: {} } },
+  orte: { name: "orte_ausblenden", selector: { boolean: {} } },
   umschalter: { name: "umschalter_ausblenden", selector: { boolean: {} } },
   von: { name: "von", selector: { number: { min: 0, max: 23, mode: "box" } } },
   bis: { name: "bis", selector: { number: { min: 1, max: 24, mode: "box" } } },
@@ -134,6 +156,7 @@ const BESCHRIFTUNG = {
   medikamente_ausblenden: "Einnahmen ausblenden",
   eingenommene_ausblenden: "Eingenommene Medikamente ausblenden",
   erledigte_ausblenden: "Erledigte Aufgaben ausblenden",
+  orte_ausblenden: "Ort-Erinnerungen ausblenden",
   umschalter_ausblenden: "Umschalter ausblenden",
   ohne_plan_ausblenden: "Medikamente ohne feste Zeit ausblenden",
   empfehlung_ausblenden: "Empfehlungstext ausblenden",
@@ -205,7 +228,7 @@ function zeileHtml(hass, e, { mitAktionen = true, heute = heuteText() } = {}) {
     const haken = mitAktionen
       ? `<button class="haken ${e.erledigt ? "an" : ""}" data-uid="${esc(e.uid)}" data-erledigt="${e.erledigt}" aria-label="Abhaken">${e.erledigt ? "✓" : ""}</button>`
       : `<span class="punkt" style="background:${esc(e.farbe || "var(--primary-color)")}"></span>`;
-    return `<div class="${klassen}">${haken}<span class="zeit">${uhrzeit(hass, e.start)}</span><span class="text">${esc(e.titel)}</span></div>`;
+    return `<div class="${klassen}">${haken}<span class="zeit">${uhrzeit(hass, e.start)}</span><span class="text">${esc(e.titel)}${ortHtml(e.ort)}</span></div>`;
   }
   const status = { eingenommen: "✓ eingenommen", uebersprungen: "übersprungen" }[e.status] || "";
   const knopf = mitAktionen && e.status === "offen" && e.datum === heute
@@ -256,7 +279,7 @@ class AdhsAgendaKarte extends AdhsBasisKarte {
         FELD.titel,
         { name: "zeitraum", selector: { select: { mode: "dropdown", options: [
           { value: "heute", label: "Heute" }, { value: "3", label: "3 Tage" }, { value: "7", label: "7 Tage" }] } } },
-        FELD.umschalter, FELD.erledigte, FELD.eingenommene, FELD.medikamente,
+        FELD.umschalter, FELD.erledigte, FELD.orte, FELD.eingenommene, FELD.medikamente,
       ],
       computeLabel: beschriftung,
     };
@@ -292,7 +315,7 @@ class AdhsTagesplanungKarte extends AdhsBasisKarte {
     if (config.groesse === "s") {
       const n = naechste[0];
       return kopf + `<div class="fortschritt">${ring(heute.length ? fertig / heute.length : 0, 56, 6)}
-        <div><div class="neben">Als Nächstes</div><div>${n ? `${uhrzeit(hass, n.start)} · ${esc(n.titel)}` : "Alles erledigt"}</div></div></div>`;
+        <div><div class="neben">Als Nächstes</div><div>${n ? `${uhrzeit(hass, n.start)} · ${esc(n.titel)}${ortHtml(n.ort)}` : "Alles erledigt"}</div></div></div>`;
     }
     if (config.groesse === "m") {
       const zeilen = (naechste.length ? naechste : heute).slice(0, 6);
@@ -311,7 +334,7 @@ class AdhsTagesplanungKarte extends AdhsBasisKarte {
       const ende = e.ende ? stundenAuf(e.ende) : s + 0.5;
       if (s > bis) continue;
       const farbe = e.art === "einnahme" ? "var(--warning-color, #f4b400)" : esc(e.farbe || "var(--primary-color)");
-      raster += `<div class="block ${e.erledigt ? "erledigt" : ""}" style="top:${(s - von) * hoehe}px;height:${Math.max(18, (Math.min(bis, ende) - s) * hoehe - 2)}px;background:${farbe}">${uhrzeit(hass, e.start)} ${e.art === "einnahme" ? "💊 " : ""}${esc(e.titel)}</div>`;
+      raster += `<div class="block ${e.erledigt ? "erledigt" : ""}" style="top:${(s - von) * hoehe}px;height:${Math.max(18, (Math.min(bis, ende) - s) * hoehe - 2)}px;background:${farbe}">${uhrzeit(hass, e.start)} ${e.art === "einnahme" ? "💊 " : ""}${esc(e.titel)}${e.ort ? ` · 📍 ${esc(ortText(e.ort))}` : ""}</div>`;
     }
     const n = new Date(), jetztH = n.getHours() + n.getMinutes() / 60;
     if (jetztH >= von && jetztH <= bis) raster += `<div class="jetzt" style="top:${(jetztH - von) * hoehe}px"></div>`;
@@ -328,7 +351,7 @@ class AdhsTagesplanungKarte extends AdhsBasisKarte {
         FELD.titel,
         { name: "groesse", selector: { select: { mode: "dropdown", options: [
           { value: "s", label: "Klein" }, { value: "m", label: "Mittel" }, { value: "l", label: "Groß (Zeitleiste)" }] } } },
-        FELD.erledigte, FELD.eingenommene, FELD.medikamente, FELD.von, FELD.bis,
+        FELD.erledigte, FELD.orte, FELD.eingenommene, FELD.medikamente, FELD.von, FELD.bis,
       ],
       computeLabel: beschriftung,
     };
@@ -396,7 +419,7 @@ class AdhsKalenderKarte extends AdhsBasisKarte {
       for (const e of amTag) {
         const farbe = e.art === "einnahme" ? "var(--warning-color, #f4b400)" : esc(e.farbe || "var(--primary-color)");
         const breite = 100 / spuren;
-        bloecke += `<div class="block ${e.erledigt ? "erledigt" : ""}" title="${esc(uhrzeit(hass, e.start) + " " + e.titel)}"
+        bloecke += `<div class="block ${e.erledigt ? "erledigt" : ""}" title="${esc(uhrzeit(hass, e.start) + " " + e.titel + (e.ort ? " – " + ortText(e.ort) : ""))}"
           style="top:${(e.s - von) * hoehe}px;height:${Math.max(14, (e.ende - e.s) * hoehe - 2)}px;left:calc(${e.spur * breite}% + 2px);width:calc(${breite}% - 4px);background:${farbe}">${e.art === "einnahme" ? "💊 " : ""}${esc(e.titel)}</div>`;
       }
       let jetzt = "";
@@ -421,7 +444,7 @@ class AdhsKalenderKarte extends AdhsBasisKarte {
       schema: [
         FELD.titel,
         { name: "tage", selector: { select: { mode: "dropdown", options: [{ value: "3", label: "3 Tage" }, { value: "7", label: "7 Tage" }] } } },
-        FELD.umschalter, FELD.erledigte, FELD.eingenommene, FELD.medikamente, FELD.von, FELD.bis,
+        FELD.umschalter, FELD.erledigte, FELD.orte, FELD.eingenommene, FELD.medikamente, FELD.von, FELD.bis,
       ],
       computeLabel: beschriftung,
     };
@@ -467,7 +490,7 @@ class AdhsUhrKarte extends AdhsBasisKarte {
       const ende = new Date(Math.min(new Date(e.ende || new Date(e.start).getTime() + 30 * 60000), bisZeit));
       const farbe = e.art === "einnahme" ? "var(--warning-color, #f4b400)" : (e.farbe || "var(--primary-color)");
       const w1 = winkel(start), w2 = Math.max(winkel(ende), w1 + 4);
-      svg += `<path d="${bogen(w1, w2, r + 0.5)}" fill="none" stroke="${esc(farbe)}" stroke-width="8" stroke-linecap="round" opacity="${e.erledigt ? 0.35 : 1}"><title>${esc(uhrzeit(hass, e.start) + " " + e.titel)}</title></path>`;
+      svg += `<path d="${bogen(w1, w2, r + 0.5)}" fill="none" stroke="${esc(farbe)}" stroke-width="8" stroke-linecap="round" opacity="${e.erledigt ? 0.35 : 1}"><title>${esc(uhrzeit(hass, e.start) + " " + e.titel + (e.ort ? " – " + ortText(e.ort) : ""))}</title></path>`;
     }
     if (sechs) {
       const [x, y] = punkt(0, r);
@@ -494,7 +517,7 @@ class AdhsUhrKarte extends AdhsBasisKarte {
       schema: [
         FELD.titel,
         { name: "modus", selector: { select: { mode: "dropdown", options: [{ value: "12h", label: "12 Stunden" }, { value: "6h", label: "6 Stunden" }] } } },
-        FELD.erledigte, FELD.eingenommene, FELD.medikamente,
+        FELD.erledigte, FELD.orte, FELD.eingenommene, FELD.medikamente,
       ],
       computeLabel: beschriftung,
     };

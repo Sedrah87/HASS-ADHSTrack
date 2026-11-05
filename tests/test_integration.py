@@ -116,6 +116,29 @@ async def test_aufgabe_abhaken_und_bestaetigen(hass: HomeAssistant, eintrag, has
     assert antwort["befehle"] == []
 
 
+async def test_ort_erinnerung_im_kalender_und_sensor(hass: HomeAssistant, eintrag, hass_client_no_auth) -> None:
+    heute = dt_util.now().date().isoformat()
+    mit_ort = {**aufgabe("A2", heute), "ort": {
+        "ausloeser": "ankommen", "bezeichnung": "Supermarkt", "name": "Supermarkt", "adresse": "Hauptstraße 1, Berlin",
+        "breite": 52.52, "laenge": 13.40, "umkreis": 150,
+    }}
+    await sende(hass_client_no_auth, sync(aufgaben=[mit_ort]))
+    await hass.async_block_till_done()
+
+    kalender_id = next(s.entity_id for s in hass.states.async_all("calendar"))
+    antwort = await hass.services.async_call(
+        "calendar", "get_events",
+        {"start_date_time": dt_util.start_of_local_day(), "end_date_time": dt_util.start_of_local_day() + timedelta(days=1)},
+        target={"entity_id": kalender_id}, blocking=True, return_response=True,
+    )
+    termine = antwort[kalender_id]["events"]
+    assert termine[0]["location"] == "Hauptstraße 1, Berlin"
+
+    agenda = next(s for s in hass.states.async_all("sensor") if "aufgaben" in s.attributes and isinstance(s.attributes["aufgaben"], list)
+                  and any("ort" in a for a in s.attributes["aufgaben"]))
+    assert agenda.attributes["aufgaben"][0]["ort"]["ausloeser"] == "ankommen"
+
+
 async def test_einnahme_dienst_und_erinnerung_unterdrueckt(
     hass: HomeAssistant, eintrag, hass_client_no_auth, freezer: FrozenDateTimeFactory
 ) -> None:
