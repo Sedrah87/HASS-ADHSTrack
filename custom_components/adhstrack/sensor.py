@@ -144,7 +144,7 @@ SENSOREN: tuple[AdhsSensorBeschreibung, ...] = (
     AdhsSensorBeschreibung(
         key="agenda",
         wert=lambda d: len(d.aufgaben()) if d.stand.get("aufgaben") is not None else None,
-        attribute=lambda d: {"aufgaben": d.aufgaben()},
+        attribute=lambda d: {"aufgaben": d.aufgaben(), "termine": d.termine()},
     ),
     AdhsSensorBeschreibung(
         key="orte", state_class=SensorStateClass.MEASUREMENT,

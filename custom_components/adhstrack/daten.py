@@ -143,7 +143,7 @@ class AdhsDaten:
             self.stand["zeitzone"] = daten["zeitzone"]
 
         # Abgeschaltete Bereiche fehlen in der Nachricht: dann den letzten Stand behalten.
-        for bereich in ("koerper", "journal", "aufgaben", "orte", "inbox", "medikamente", "einnahmen"):
+        for bereich in ("koerper", "journal", "aufgaben", "orte", "inbox", "termine", "medikamente", "einnahmen"):
             if bereich in daten and daten[bereich] is not None:
                 self.stand[bereich] = daten[bereich]
 
@@ -364,6 +364,10 @@ class AdhsDaten:
             wartend = self._wartender_status(aufgabe.get("uid", ""))
             ergebnis.append({**aufgabe, "erledigt": wartend} if wartend is not None else aufgabe)
         return ergebnis
+
+    def termine(self) -> list[dict[str, Any]]:
+        """Termine aus den iOS-Kalendern der App (nur lesend)."""
+        return self.stand.get("termine") or []
 
     def aufgabe(self, uid: str) -> dict[str, Any] | None:
         return next((a for a in [*self.aufgaben(), *self.orte()] if a.get("uid") == uid), None)

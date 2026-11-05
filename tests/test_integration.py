@@ -116,6 +116,41 @@ async def test_aufgabe_abhaken_und_bestaetigen(hass: HomeAssistant, eintrag, has
     assert antwort["befehle"] == []
 
 
+async def test_kalendertermine_im_kalender_und_agenda(hass: HomeAssistant, eintrag, hass_client_no_auth) -> None:
+    heute = dt_util.now().date()
+    start = dt_util.start_of_local_day() + timedelta(hours=14)
+    termine = [
+        {"uid": "E1|1", "datum": heute.isoformat(), "bis_datum": heute.isoformat(), "titel": "Zahnarzt",
+         "start": iso(start), "ende": iso(start + timedelta(hours=1)), "ganztaegig": False, "ort": "Praxis",
+         "kalender": "Privat", "farbe": "#FF0000", "wiederkehrend": False},
+        {"uid": "E2|2", "datum": heute.isoformat(), "bis_datum": (heute + timedelta(days=1)).isoformat(), "titel": "Urlaub",
+         "start": iso(dt_util.start_of_local_day()), "ende": iso(dt_util.start_of_local_day() + timedelta(days=2)),
+         "ganztaegig": True, "kalender": "Privat", "wiederkehrend": False},
+    ]
+    await sende(hass_client_no_auth, sync(aufgaben=[aufgabe("A1", heute.isoformat())], termine=termine))
+    await hass.async_block_till_done()
+
+    kalender_id = next(s.entity_id for s in hass.states.async_all("calendar"))
+    antwort = await hass.services.async_call(
+        "calendar", "get_events",
+        {"start_date_time": dt_util.start_of_local_day(), "end_date_time": dt_util.start_of_local_day() + timedelta(days=3)},
+        target={"entity_id": kalender_id}, blocking=True, return_response=True,
+    )
+    ereignisse = {e["summary"]: e for e in antwort[kalender_id]["events"]}
+    assert set(ereignisse) == {"Aufgabe A1", "Zahnarzt", "Urlaub"}
+    assert ereignisse["Zahnarzt"]["location"] == "Praxis"
+    assert ereignisse["Urlaub"]["start"] == heute.isoformat()
+    assert ereignisse["Urlaub"]["end"] == (heute + timedelta(days=2)).isoformat()
+
+    agenda = next(s for s in hass.states.async_all("sensor") if s.attributes.get("termine"))
+    assert [t["titel"] for t in agenda.attributes["termine"]] == ["Zahnarzt", "Urlaub"]
+
+    # Leere Liste aus der App (z. B. Kalenderzugriff entzogen) leert den Stand.
+    await sende(hass_client_no_auth, sync(termine=[]))
+    await hass.async_block_till_done()
+    assert hass.states.get(agenda.entity_id).attributes["termine"] == []
+
+
 async def test_ort_erinnerung_im_kalender_und_sensor(hass: HomeAssistant, eintrag, hass_client_no_auth) -> None:
     heute = dt_util.now().date().isoformat()
     mit_ort = {**aufgabe("A2", heute), "ort": {

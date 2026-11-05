@@ -5,7 +5,7 @@
  * damit sie unabhängig von Sprache und Entitäts-IDs funktionieren. Optional per `entity` überschreibbar.
  */
 
-const VERSION = "0.4.1";
+const VERSION = "0.5.0";
 const DOMAIN = "adhstrack";
 
 // ---------------------------------------------------------------- Hilfsfunktionen
@@ -74,7 +74,7 @@ function ortHtml(ort) {
   return `<span class="ort" title="${esc(titel)}"><ha-icon icon="${ORT_SYMBOL[ort.ausloeser] || "mdi:map-marker"}"></ha-icon>${esc(ortText(ort))}</span>`;
 }
 
-/** Aufgaben und Einnahmen als gemeinsame, nach Zeit sortierte Einträge. */
+/** Aufgaben, Kalendertermine und Einnahmen als gemeinsame, nach Zeit sortierte Einträge. */
 function eintraege(hass, config, { tage = 1, mitUeberfaelligen = true } = {}) {
   const agenda = zustand(hass, "agenda", config.entity);
   const meds = zustand(hass, "medikamente", config.medikamente_entity);
@@ -89,6 +89,20 @@ function eintraege(hass, config, { tage = 1, mitUeberfaelligen = true } = {}) {
       erledigt: a.erledigt, ueberfaellig: a.ueberfaellig, uid: a.uid, farbe: a.farbe, liste: a.liste,
       ort: config.orte_ausblenden ? null : a.ort });
   }
+  if (!config.termine_ausblenden) {
+    for (const t of (agenda && agenda.attributes.termine) || []) {
+      // Mehrtägige Termine erscheinen an jedem Tag im Zeitraum, der erste Tag mit Uhrzeit.
+      for (let i = 0; i < tage; i++) {
+        const datum = plusTage(i);
+        if (datum < t.datum || datum > (t.bis_datum || t.datum)) continue;
+        const ganztag = t.ganztaegig || datum !== t.datum;
+        const [j, m, d] = datum.split("-").map(Number);
+        const ende = (t.bis_datum || t.datum) > datum ? new Date(j, m - 1, d, 23, 59).toISOString() : t.ende;
+        liste.push({ art: "termin", datum, start: ganztag ? null : t.start, ende: ganztag ? null : ende, ganztaegig: ganztag,
+          titel: t.titel, erledigt: false, farbe: t.farbe, kalender: t.kalender, ort_text: t.ort });
+      }
+    }
+  }
   if (!config.medikamente_ausblenden) {
     for (const m of (meds && meds.attributes.medikamente) || []) {
       for (const t of m.plan || []) {
@@ -99,6 +113,7 @@ function eintraege(hass, config, { tage = 1, mitUeberfaelligen = true } = {}) {
       }
     }
   }
+  // Ganztägige Termine zuerst (kein start), dann nach Uhrzeit.
   return liste.sort((x, y) => (x.start || "").localeCompare(y.start || ""));
 }
 
@@ -143,6 +158,7 @@ const ALTE_SCHALTER = {
 const FELD = {
   titel: { name: "titel", selector: { text: {} } },
   medikamente: { name: "medikamente_ausblenden", selector: { boolean: {} } },
+  termine: { name: "termine_ausblenden", selector: { boolean: {} } },
   eingenommene: { name: "eingenommene_ausblenden", selector: { boolean: {} } },
   erledigte: { name: "erledigte_ausblenden", selector: { boolean: {} } },
   orte: { name: "orte_ausblenden", selector: { boolean: {} } },
@@ -154,6 +170,7 @@ const BESCHRIFTUNG = {
   titel: "Titel", zeitraum: "Zeitraum", tage: "Zeitraum", groesse: "Größe", modus: "Darstellung", anzahl: "Einträge anzeigen",
   von: "Zeitleiste von (Uhr)", bis: "Zeitleiste bis (Uhr)",
   medikamente_ausblenden: "Einnahmen ausblenden",
+  termine_ausblenden: "Kalendertermine ausblenden",
   eingenommene_ausblenden: "Eingenommene Medikamente ausblenden",
   erledigte_ausblenden: "Erledigte Aufgaben ausblenden",
   orte_ausblenden: "Ort-Erinnerungen ausblenden",
@@ -232,6 +249,10 @@ function zeileHtml(hass, e, { mitAktionen = true, heute = heuteText() } = {}) {
       : `<span class="punkt" style="background:${esc(e.farbe || "var(--primary-color)")}"></span>`;
     return `<div class="${klassen}">${haken}<span class="zeit">${uhrzeit(hass, e.start)}</span><span class="text">${esc(e.titel)}${ortHtml(e.ort)}</span></div>`;
   }
+  if (e.art === "termin") {
+    const ort = e.ort_text ? `<span class="ort" title="${esc(e.ort_text)}"><ha-icon icon="mdi:map-marker"></ha-icon>${esc(e.ort_text)}</span>` : "";
+    return `<div class="${klassen}"><span class="punkt" style="background:${esc(e.farbe || "var(--primary-color)")}"></span><span class="zeit">${e.ganztaegig ? "ganzt." : uhrzeit(hass, e.start)}</span><span class="text" title="${esc(e.kalender || "")}">${esc(e.titel)}${ort}</span></div>`;
+  }
   const status = { eingenommen: "✓ eingenommen", uebersprungen: "übersprungen" }[e.status] || "";
   const knopf = mitAktionen && e.status === "offen" && e.datum === heute
     ? `<button class="knopf" data-med="${esc(e.med_id)}">Einnehmen</button>` : `<span class="status">${status}</span>`;
@@ -281,7 +302,7 @@ class AdhsAgendaKarte extends AdhsBasisKarte {
         FELD.titel,
         { name: "zeitraum", selector: { select: { mode: "dropdown", options: [
           { value: "heute", label: "Heute" }, { value: "3", label: "3 Tage" }, { value: "7", label: "7 Tage" }] } } },
-        FELD.umschalter, FELD.erledigte, FELD.orte, FELD.eingenommene, FELD.medikamente,
+        FELD.umschalter, FELD.erledigte, FELD.orte, FELD.eingenommene, FELD.medikamente, FELD.termine,
       ],
       computeLabel: beschriftung,
     };
@@ -309,14 +330,15 @@ class AdhsTagesplanungKarte extends AdhsBasisKarte {
   inhalt(hass, config) {
     const liste = eintraege(hass, config, { tage: 1 });
     const heute = liste.filter((e) => e.datum !== "ueberfaellig");
-    const fertig = heute.filter((e) => e.erledigt).length;
+    const abhakbar = heute.filter((e) => e.art !== "termin");
+    const fertig = abhakbar.filter((e) => e.erledigt).length;
     const jetzt = new Date().toISOString();
     const naechste = heute.filter((e) => !e.erledigt && (e.ende || e.start) >= jetzt.slice(0, 16) || (!e.erledigt && e.ueberfaellig));
-    const kopf = `<div class="kopf"><span class="titel">${esc(config.titel || "Tagesplanung")}</span><span class="neben">${fertig}/${heute.length} erledigt</span></div>`;
+    const kopf = `<div class="kopf"><span class="titel">${esc(config.titel || "Tagesplanung")}</span><span class="neben">${fertig}/${abhakbar.length} erledigt</span></div>`;
 
     if (config.groesse === "s") {
       const n = naechste[0];
-      return kopf + `<div class="fortschritt">${ring(heute.length ? fertig / heute.length : 0, 56, 6)}
+      return kopf + `<div class="fortschritt">${ring(abhakbar.length ? fertig / abhakbar.length : 0, 56, 6)}
         <div><div class="neben">Als Nächstes</div><div>${n ? `${uhrzeit(hass, n.start)} · ${esc(n.titel)}${ortHtml(n.ort)}` : "Alles erledigt"}</div></div></div>`;
     }
     if (config.groesse === "m") {
@@ -353,7 +375,7 @@ class AdhsTagesplanungKarte extends AdhsBasisKarte {
         FELD.titel,
         { name: "groesse", selector: { select: { mode: "dropdown", options: [
           { value: "s", label: "Klein" }, { value: "m", label: "Mittel" }, { value: "l", label: "Groß (Zeitleiste)" }] } } },
-        FELD.erledigte, FELD.orte, FELD.eingenommene, FELD.medikamente, FELD.von, FELD.bis,
+        FELD.erledigte, FELD.orte, FELD.eingenommene, FELD.medikamente, FELD.termine, FELD.von, FELD.bis,
       ],
       computeLabel: beschriftung,
     };
@@ -446,7 +468,7 @@ class AdhsKalenderKarte extends AdhsBasisKarte {
       schema: [
         FELD.titel,
         { name: "tage", selector: { select: { mode: "dropdown", options: [{ value: "3", label: "3 Tage" }, { value: "7", label: "7 Tage" }] } } },
-        FELD.umschalter, FELD.erledigte, FELD.orte, FELD.eingenommene, FELD.medikamente, FELD.von, FELD.bis,
+        FELD.umschalter, FELD.erledigte, FELD.orte, FELD.eingenommene, FELD.medikamente, FELD.termine, FELD.von, FELD.bis,
       ],
       computeLabel: beschriftung,
     };
@@ -519,7 +541,7 @@ class AdhsUhrKarte extends AdhsBasisKarte {
       schema: [
         FELD.titel,
         { name: "modus", selector: { select: { mode: "dropdown", options: [{ value: "12h", label: "12 Stunden" }, { value: "6h", label: "6 Stunden" }] } } },
-        FELD.erledigte, FELD.orte, FELD.eingenommene, FELD.medikamente,
+        FELD.erledigte, FELD.orte, FELD.eingenommene, FELD.medikamente, FELD.termine,
       ],
       computeLabel: beschriftung,
     };

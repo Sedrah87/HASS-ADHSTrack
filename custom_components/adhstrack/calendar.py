@@ -1,8 +1,8 @@
-"""Kalender: Aufgaben und geplante Medikamenteneinnahmen (heute bis +6 Tage)."""
+"""Kalender: Aufgaben, iOS-Kalendertermine und geplante Medikamenteneinnahmen (heute bis +6 Tage)."""
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 
 from homeassistant.components.calendar import CalendarEntity, CalendarEvent
 from homeassistant.core import HomeAssistant
@@ -44,6 +44,31 @@ class AdhsKalender(AdhsEntity, CalendarEntity):
                     description=a.get("notiz"),
                     location=ort.get("adresse") or ort.get("bezeichnung"),
                     uid=f"aufgabe_{a['uid']}",
+                )
+            )
+        for t in self.daten.termine():
+            if t.get("ganztaegig"):
+                try:
+                    von = date.fromisoformat(t["datum"])
+                    bis = date.fromisoformat(t.get("bis_datum") or t["datum"])
+                except (KeyError, TypeError, ValueError):
+                    continue
+                start_wert, ende_wert = von, max(bis, von) + timedelta(days=1)
+            else:
+                start = parse_zeit(t.get("start"))
+                if start is None:
+                    continue
+                ende = parse_zeit(t.get("ende"))
+                start_wert = dt_util.as_local(start)
+                ende_wert = dt_util.as_local(ende if ende and ende > start else start + _STANDARD_DAUER)
+            termine.append(
+                CalendarEvent(
+                    start=start_wert,
+                    end=ende_wert,
+                    summary=t.get("titel") or "",
+                    description=t.get("notiz"),
+                    location=t.get("ort"),
+                    uid=f"termin_{t.get('uid')}",
                 )
             )
         for med in self.daten.medikamente():

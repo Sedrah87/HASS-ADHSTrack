@@ -7,7 +7,7 @@ Verbindet die iOS-App **ADHS Track** mit Home Assistant. Du brauchst weder Nabu 
 - **Körperwerte** als Sensoren mit Verlauf: Recovery, Schlaf (% und Dauer), Strain, Ruhepuls, HRV, Atemfrequenz und letzte Herzfrequenz.
 - **Körper-Journal**: Koffein, Alkohol, Flüssigkeit, Stimmung und Energie.
 - **Aufgaben** als To-do-Liste, in HA abhakbar. Die App übernimmt den Haken beim nächsten Abgleich.
-- **Kalender** mit Aufgaben und geplanten Einnahmen für heute bis +6 Tage.
+- **Kalender** mit Aufgaben, Terminen aus den iOS-Kalendern der App und geplanten Einnahmen für heute bis +6 Tage – alles in einem Kalender.
 - **Medikamente**: Ereignisse zur Erinnerungszeit (nur wenn noch nicht eingenommen) und bei jeder Einnahme. Einnahmen lassen sich auch aus HA erfassen, z. B. per NFC-Tag.
 - **Training live**: Puls, Trainingszone und Tempohinweis während Rudern oder Yoga, plus ein Ereignis bei Zonenwechsel.
 - **Dashboard-Karten** als Gegenstück zu den App-Widgets. Sie werden automatisch geladen.
@@ -75,7 +75,7 @@ In HA abgehakte Aufgaben und erfasste Einnahmen sind in HA sofort sichtbar. In d
 | `sensor.*_trainingszone`, `*_trainingspuls`, `binary_sensor.*_training_aktiv` | Training live |
 | `binary_sensor.*_medikament_faellig` | Eine Einnahme ist fällig und noch offen |
 | `todo.*_aufgaben` | Heutige und überfällige Aufgaben |
-| `calendar.*_kalender` | Aufgaben und Einnahmen für heute bis +6 Tage |
+| `calendar.*_kalender` | Aufgaben, iOS-Kalendertermine und Einnahmen für heute bis +6 Tage |
 
 Die Entitäts-IDs hängen von der Sprache ab. Die Karten finden ihre Entitäten deshalb selbst.
 
@@ -99,7 +99,7 @@ Hat die App dasselbe Medikament schon in diesem Zeitfenster (±90 min) erfasst, 
 
 Alle Karten findest du unter **Karte hinzufügen**, Suchbegriff „ADHS Track“. Sie lassen sich ohne YAML einrichten.
 
-Gemeinsame Schalter (alle standardmäßig aus): `erledigte_ausblenden`, `orte_ausblenden`, `eingenommene_ausblenden`, `medikamente_ausblenden` und `umschalter_ausblenden`. Ältere Optionen wie `zeige_medikamente: false` werden weiter verstanden.
+Gemeinsame Schalter (alle standardmäßig aus): `erledigte_ausblenden`, `orte_ausblenden`, `eingenommene_ausblenden`, `medikamente_ausblenden`, `termine_ausblenden` und `umschalter_ausblenden`. Ältere Optionen wie `zeige_medikamente: false` werden weiter verstanden.
 
 ```yaml
 type: custom:adhstrack-agenda-card       # Heute / 3 / 7 Tage, abhakbar
