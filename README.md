@@ -164,6 +164,10 @@ actions:
     data: { percentage: 100 }
 ```
 
+## Änderungen
+
+Was sich in welcher Version geändert hat, steht im [CHANGELOG](CHANGELOG.md) und in den Release-Notizen der jeweiligen Version (in HACS/Marketplace beim Update sichtbar).
+
 ## Entwicklung
 
 ```sh
@@ -181,6 +185,8 @@ mkdir -p ~/.config/hass-adhstrack
 $EDITOR ~/.config/hass-adhstrack/verbotene-muster.txt   # ein Muster pro Zeile
 scripts/privatsphaere_pruefen.sh historie               # gesamte Historie prüfen
 ```
+
+Neue Version veröffentlichen: `version` in `manifest.json` und `VERSION` in `frontend/adhstrack-cards.js` erhöhen, Abschnitt `## [X.Y.Z] – Datum` oben in `CHANGELOG.md` ergänzen, committen und den Tag `vX.Y.Z` pushen. Der Workflow `release.yml` legt daraus das GitHub-Release an; erst damit zeigen HACS und Marketplace die Versionsnummer statt einer Commit-Nummer.
 
 Das Protokoll zwischen App und Integration (JSON, Version `v: 1`) ist im App-Repository unter `Doku/HOME_ASSISTANT_2026-11-03.md` beschrieben.
 

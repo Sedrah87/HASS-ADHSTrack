@@ -1,0 +1,50 @@
+# Legt zu jedem Versions-Tag (vX.Y.Z) ein GitHub-Release an. Ohne Release zeigen HACS und der
+# Marketplace nur eine Commit-Nummer statt der Version. Die Notizen stammen aus CHANGELOG.md
+# (Abschnitt „## [X.Y.Z]“) auf main. Läuft bei jedem Push auf main und bei neuen Tags und legt nur
+# fehlende Releases an; das neueste Release wird als „Latest“ markiert.
+name: Release
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*.*.*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - name: Fehlende Releases anlegen
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          git fetch --tags --force
+          neuester=$(git tag -l 'v[0-9]*.[0-9]*.[0-9]*' | sort -V | tail -n 1)
+          for tag in $(git tag -l 'v[0-9]*.[0-9]*.[0-9]*' | sort -V); do
+            if gh release view "$tag" >/dev/null 2>&1; then continue; fi
+            version="${tag#v}"
+            # Abschnitt zwischen „## [version]“ und der nächsten „## [“-Überschrift
+            awk -v v="$version" '
+              $0 ~ "^## \\[" v "\\]" { an = 1; next }
+              an && /^## \[/ { exit }
+              an { print }
+            ' CHANGELOG.md > notizen.md
+            if ! grep -q '[^[:space:]]' notizen.md; then
+              echo "Keine Changelog-Einträge für $version." > notizen.md
+            fi
+            latest=false
+            [ "$tag" = "$neuester" ] && latest=true
+            gh release create "$tag" --verify-tag --title "$version" --notes-file notizen.md --latest="$latest"
+            echo "✅ Release $tag angelegt"
+          done
