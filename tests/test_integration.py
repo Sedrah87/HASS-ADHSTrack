@@ -352,3 +352,32 @@ async def test_dashboard_karten_werden_ausgeliefert(hass: HomeAssistant, eintrag
     text = await antwort.text()
     for karte in ("adhstrack-agenda-card", "adhstrack-kalender-card", "adhstrack-tagesplanung-card", "adhstrack-uhr-card", "adhstrack-medikamente-card", "adhstrack-orte-card"):
         assert karte in text
+
+
+async def test_eigene_farben(hass: HomeAssistant, eintrag, hass_client_no_auth) -> None:
+    heute = dt_util.now().date().isoformat()
+    termin = {"uid": "E1|1", "datum": heute, "bis_datum": heute, "titel": "Zahnarzt", "ganztaegig": True,
+              "kalender": "Privat", "farbe": "#FF0000", "wiederkehrend": False}
+    a = {**aufgabe("A1", heute), "farbe": "#00FF00"}
+    stand = sync(aufgaben=[a], termine=[termin], medikamente=[medikament(dt_util.now() + timedelta(hours=1))])
+
+    ergebnis = await hass.config_entries.options.async_init(eintrag.entry_id)
+    abschluss = await hass.config_entries.options.async_configure(
+        ergebnis["flow_id"],
+        {
+            "url_intern": "http://ha.local:8123",
+            "eigene_farbe_medikamente": True, "farbe_medikamente": "#111111",
+            "eigene_farbe_aufgaben": True, "farbe_aufgaben": "#222222",
+            "eigene_farbe_termine": False, "farbe_termine": "#333333",
+        },
+    )
+    await hass.async_block_till_done()
+    assert abschluss["type"] == "create_entry", abschluss
+    await sende(hass_client_no_auth, stand)
+    await hass.async_block_till_done()
+
+    agenda = next(s for s in hass.states.async_all("sensor") if s.attributes.get("termine"))
+    assert agenda.attributes["aufgaben"][0]["farbe"] == "#222222"
+    assert agenda.attributes["termine"][0]["farbe"] == "#FF0000"
+    meds = next(s for s in hass.states.async_all("sensor") if s.attributes.get("medikamente"))
+    assert meds.attributes["medikamente"][0]["farbe"] == "#111111"

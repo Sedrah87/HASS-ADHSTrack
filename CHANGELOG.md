@@ -2,6 +2,11 @@
 
 Alle sichtbaren Änderungen an der Integration „ADHS Track“. Die Version steht in Home Assistant bzw. im Marketplace/HACS; die Release-Notizen auf GitHub werden aus dieser Datei erzeugt.
 
+## [0.6.0] – 2026-11-05
+
+### Neu
+- **Eigene Farben:** In den Optionen der Integration (Einstellungen › Geräte & Dienste › ADHS Track › Konfigurieren) lässt sich für Medikamente, Aufgaben und Kalendertermine je eine eigene Farbe wählen. Sie gilt in allen Dashboard-Karten und in den Attributen der Sensoren. Ist die Farbe ausgeschaltet, gilt weiter die Farbe aus der App.
+
 ## [0.5.2] – 2026-11-05
 
 ### Behoben

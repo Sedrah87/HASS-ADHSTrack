@@ -5,7 +5,7 @@
  * damit sie unabhängig von Sprache und Entitäts-IDs funktionieren. Optional per `entity` überschreibbar.
  */
 
-const VERSION = "0.5.2";
+const VERSION = "0.6.0";
 const DOMAIN = "adhstrack";
 
 // ---------------------------------------------------------------- Hilfsfunktionen

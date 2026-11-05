@@ -24,6 +24,7 @@ from homeassistant.loader import async_get_integration
 from .const import (
     CONF_WEBHOOK_ID,
     DOMAIN,
+    FARB_ARTEN,
     FRONTEND_DATEI,
     FRONTEND_URL,
     NAME,
@@ -118,7 +119,14 @@ async def async_setup_entry(hass: HomeAssistant, entry: AdhsConfigEntry) -> bool
         store=Store(hass, SPEICHER_VERSION, f"{DOMAIN}.{entry.entry_id}"),
     )
     await daten.async_laden()
+    daten.farben = {
+        art: entry.options[f"farbe_{art}"]
+        for art in FARB_ARTEN
+        if entry.options.get(f"eigene_farbe_{art}") and entry.options.get(f"farbe_{art}")
+    }
     entry.runtime_data = daten
+    # Neu laden bei geänderten Daten (URLs, Webhook) oder Optionen (Farben), nachdem beides gespeichert ist.
+    entry.async_on_unload(entry.add_update_listener(_neu_laden))
 
     webhook.async_register(
         hass,
@@ -131,6 +139,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: AdhsConfigEntry) -> bool
     )
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     return True
+
+
+async def _neu_laden(hass: HomeAssistant, entry: AdhsConfigEntry) -> None:
+    await hass.config_entries.async_reload(entry.entry_id)
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: AdhsConfigEntry) -> bool:

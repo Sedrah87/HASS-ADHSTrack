@@ -30,7 +30,13 @@
         "data": {
           "url_intern": "Internal URL",
           "url_extern": "External URL (optional, https)",
-          "neuer_webhook": "Generate new webhook ID (app must be paired again)"
+          "neuer_webhook": "Generate new webhook ID (app must be paired again)",
+          "eigene_farbe_medikamente": "Medications: use custom color",
+          "farbe_medikamente": "Medications: color",
+          "eigene_farbe_aufgaben": "Tasks: use custom color",
+          "farbe_aufgaben": "Tasks: color",
+          "eigene_farbe_termine": "Calendar events: use custom color",
+          "farbe_termine": "Calendar events: color"
         }
       }
     },

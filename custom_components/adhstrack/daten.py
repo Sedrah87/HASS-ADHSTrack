@@ -70,6 +70,8 @@ class AdhsDaten:
     gesehene_einnahmen: list[str] = field(default_factory=list)
     gefeuerte_erinnerungen: list[str] = field(default_factory=list)
     einnahmen_initialisiert: bool = False
+    # Eigene Farben aus den Optionen (Schlüssel: medikamente, aufgaben, termine); ohne Eintrag gilt die Farbe der App.
+    farben: dict[str, str] = field(default_factory=dict)
     _timer: dict[str, Callable[[], None]] = field(default_factory=dict)
     _abmelden: list[Callable[[], None]] = field(default_factory=list)
 
@@ -251,7 +253,7 @@ class AdhsDaten:
             plan = [
                 {**t, "status": self.termin_status(med["id"], t)} for t in med.get("plan") or []
             ]
-            ergebnis.append({**med, "plan": plan})
+            ergebnis.append({**self._gefaerbt("medikamente", med), "plan": plan})
         return ergebnis
 
     def termine_heute(self) -> list[tuple[dict[str, Any], dict[str, Any]]]:
@@ -350,11 +352,16 @@ class AdhsDaten:
     def aufgaben(self) -> list[dict[str, Any]]:
         """Aufgaben im Stand der App. Noch nicht bestätigte Änderungen aus HA stehen nur in `wartet` (Sollwert);
         `erledigt` ändert sich erst, wenn das iPhone den Befehl verarbeitet und bestätigt hat."""
-        return [self._mit_wartend(a) for a in self.stand.get("aufgaben") or []]
+        return [self._gefaerbt("aufgaben", self._mit_wartend(a)) for a in self.stand.get("aufgaben") or []]
 
     def orte(self) -> list[dict[str, Any]]:
         """Offene Aufgaben mit Ort-Erinnerung (auch ohne Datum), `wartet` wie bei `aufgaben`."""
-        return [self._mit_wartend(a) for a in self.stand.get("orte") or []]
+        return [self._gefaerbt("aufgaben", self._mit_wartend(a)) for a in self.stand.get("orte") or []]
+
+    def _gefaerbt(self, art: str, eintrag: dict[str, Any]) -> dict[str, Any]:
+        """Eintrag mit der eigenen Farbe der Art, sofern gewählt."""
+        farbe = self.farben.get(art)
+        return {**eintrag, "farbe": farbe} if farbe else eintrag
 
     def _mit_wartend(self, aufgabe: dict[str, Any]) -> dict[str, Any]:
         wartend = self._wartender_status(aufgabe.get("uid", ""))
@@ -362,7 +369,7 @@ class AdhsDaten:
 
     def termine(self) -> list[dict[str, Any]]:
         """Termine aus den iOS-Kalendern der App (nur lesend)."""
-        return self.stand.get("termine") or []
+        return [self._gefaerbt("termine", t) for t in self.stand.get("termine") or []]
 
     def aufgabe(self, uid: str) -> dict[str, Any] | None:
         return next((a for a in [*self.aufgaben(), *self.orte()] if a.get("uid") == uid), None)

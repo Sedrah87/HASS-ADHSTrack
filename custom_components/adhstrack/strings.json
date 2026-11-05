@@ -26,11 +26,17 @@
     "step": {
       "init": {
         "title": "ADHS Track",
-        "description": "Pairing link for the app: [Open in ADHS Track]({kopplungs_link})\n\nWebhook ID: `{webhook_id}`",
+        "description": "Eigene Farben: Ist „eigene Farbe verwenden“ aus, gilt die Farbe aus der App.\n\nKopplungslink für die App: [In ADHS Track öffnen]({kopplungs_link})\n\nWebhook-ID: `{webhook_id}`",
         "data": {
-          "url_intern": "Internal URL",
-          "url_extern": "External URL (optional, https)",
-          "neuer_webhook": "Generate new webhook ID (app must be paired again)"
+          "url_intern": "Interne URL",
+          "url_extern": "Externe URL (optional, https)",
+          "neuer_webhook": "Neue Webhook-ID erzeugen (App muss neu gekoppelt werden)",
+          "eigene_farbe_medikamente": "Medikamente: eigene Farbe verwenden",
+          "farbe_medikamente": "Medikamente: Farbe",
+          "eigene_farbe_aufgaben": "Aufgaben: eigene Farbe verwenden",
+          "farbe_aufgaben": "Aufgaben: Farbe",
+          "eigene_farbe_termine": "Kalendertermine: eigene Farbe verwenden",
+          "farbe_termine": "Kalendertermine: Farbe"
         }
       }
     },

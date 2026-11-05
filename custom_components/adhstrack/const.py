@@ -14,6 +14,9 @@ CONF_WEBHOOK_ID: Final = "webhook_id"
 CONF_URL_INTERN: Final = "url_intern"
 CONF_URL_EXTERN: Final = "url_extern"
 
+# Eigene Farben (Optionen): je Art ein Schalter und eine Farbe
+FARB_ARTEN: Final = ("medikamente", "aufgaben", "termine")
+
 # Ereignisse auf dem HA-Bus (für Automationen)
 EVENT_ERINNERUNG: Final = "adhstrack_medikament_erinnerung"
 EVENT_EINGENOMMEN: Final = "adhstrack_medikament_eingenommen"

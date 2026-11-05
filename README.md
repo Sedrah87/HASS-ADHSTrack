@@ -50,7 +50,7 @@ Fehler und Wünsche bitte als [Issue auf GitHub](https://github.com/Sedrah87/HAS
 3. Gib optional eine externe **https**-URL für unterwegs an.
 4. Öffne auf dem iPhone den angezeigten Link **„In ADHS Track öffnen“**, z. B. in der HA-App. Die App übernimmt Adressen und Webhook-ID und startet den ersten Abgleich.
 
-Du kannst die Daten in der App auch von Hand eintragen, unter **Mehr › Home Assistant**. Die Optionen der Integration zeigen den Link erneut an und können eine neue Webhook-ID erzeugen.
+Du kannst die Daten in der App auch von Hand eintragen, unter **Mehr › Home Assistant**. Die Optionen der Integration zeigen den Link erneut an, können eine neue Webhook-ID erzeugen und erlauben je eine eigene Farbe für Medikamente, Aufgaben und Kalendertermine (statt der Farbe aus der App).
 
 > Die Webhook-ID ist das Zugangsgeheimnis, gib sie nicht weiter. Außerhalb des Heimnetzes immer https verwenden, denn es werden Gesundheitsdaten übertragen.
 

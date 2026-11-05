@@ -9,9 +9,10 @@ import voluptuous as vol
 from homeassistant.components import webhook
 from homeassistant.config_entries import ConfigEntry, ConfigFlow, ConfigFlowResult, OptionsFlow
 from homeassistant.core import callback
+from homeassistant.helpers import selector
 from homeassistant.helpers.network import NoURLAvailableError, get_url
 
-from .const import CONF_URL_EXTERN, CONF_URL_INTERN, CONF_WEBHOOK_ID, DOMAIN, NAME
+from .const import CONF_URL_EXTERN, CONF_URL_INTERN, CONF_WEBHOOK_ID, DOMAIN, FARB_ARTEN, NAME
 from .kopplung import AUSSTEHEND, kopplungs_links
 
 
@@ -107,12 +108,24 @@ class AdhsOptionsFlow(OptionsFlow):
                     # Alte ID wird ungültig; die App muss neu gekoppelt werden.
                     daten[CONF_WEBHOOK_ID] = webhook.async_generate_id()
                 self.hass.config_entries.async_update_entry(self.config_entry, data=daten)
-                self.hass.config_entries.async_schedule_reload(self.config_entry.entry_id)
-                return self.async_create_entry(data={})
+                optionen = {
+                    k: v for k, v in user_input.items() if k.startswith(("eigene_farbe_", "farbe_"))
+                }
+                return self.async_create_entry(data=optionen)
 
         schema = _url_schema(daten.get(CONF_URL_INTERN, ""), daten.get(CONF_URL_EXTERN, "")).extend(
             {vol.Optional("neuer_webhook", default=False): bool}
         )
+        optionen = self.config_entry.options
+        for art in FARB_ARTEN:
+            schema = schema.extend(
+                {
+                    vol.Optional(f"eigene_farbe_{art}", default=optionen.get(f"eigene_farbe_{art}", False)): bool,
+                    vol.Optional(
+                        f"farbe_{art}", default=optionen.get(f"farbe_{art}", "#4a90d9")
+                    ): selector.TextSelector(selector.TextSelectorConfig(type=selector.TextSelectorType.COLOR)),
+                }
+            )
         return self.async_show_form(
             step_id="init",
             data_schema=schema,
