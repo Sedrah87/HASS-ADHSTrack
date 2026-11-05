@@ -5,7 +5,7 @@
  * damit sie unabhängig von Sprache und Entitäts-IDs funktionieren. Optional per `entity` überschreibbar.
  */
 
-const VERSION = "0.3.0";
+const VERSION = "0.4.0";
 const DOMAIN = "adhstrack";
 
 // ---------------------------------------------------------------- Hilfsfunktionen
@@ -157,6 +157,8 @@ const BESCHRIFTUNG = {
   eingenommene_ausblenden: "Eingenommene Medikamente ausblenden",
   erledigte_ausblenden: "Erledigte Aufgaben ausblenden",
   orte_ausblenden: "Ort-Erinnerungen ausblenden",
+  auto_ausblenden: "Auto-Auslöser ausblenden (Einsteigen/Aussteigen)",
+  adresse_ausblenden: "Adresse ausblenden",
   umschalter_ausblenden: "Umschalter ausblenden",
   ohne_plan_ausblenden: "Medikamente ohne feste Zeit ausblenden",
   empfehlung_ausblenden: "Empfehlungstext ausblenden",
@@ -547,6 +549,74 @@ class AdhsInboxKarte extends AdhsBasisKarte {
   }
 }
 
+// ---------------------------------------------------------------- Orte (offene Aufgaben mit Ort-Erinnerung)
+
+class AdhsOrteKarte extends AdhsBasisKarte {
+  static schluessel = ["orte"];
+  static standard = {};
+  static stil = `
+    .ortkopf { display: flex; align-items: center; gap: 6px; margin-top: 12px; font-weight: 600; }
+    .ortkopf ha-icon { --mdc-icon-size: 18px; color: var(--primary-color); }
+    .ortkopf .neben { font-weight: normal; }
+    .ortkopf a { color: inherit; text-decoration: none; }
+    .adresse { font-size: 0.8em; color: var(--secondary-text-color); margin: 0 0 2px 24px; }
+    .faellig { font-size: 0.8em; color: var(--secondary-text-color); flex: none; }
+  `;
+
+  inhalt(hass, config) {
+    const z = zustand(hass, "orte", config.entity);
+    let aufgaben = (z && z.attributes.aufgaben) || [];
+    if (config.erledigte_ausblenden) aufgaben = aufgaben.filter((a) => !a.erledigt);
+    if (config.auto_ausblenden) aufgaben = aufgaben.filter((a) => !String(a.ort?.ausloeser || "").startsWith("auto"));
+    const offen = aufgaben.filter((a) => !a.erledigt).length;
+    let html = `<div class="kopf"><span class="titel">${esc(config.titel || "Orte")}</span><span class="neben">${offen} offen</span></div>`;
+    if (!z) return html + `<div class="leer">Noch keine Daten aus ADHS Track.</div>`;
+    if (!aufgaben.length) return html + `<div class="leer">Keine Aufgaben mit Ort-Erinnerung.</div>`;
+
+    // Gruppen je Ort und Auslöser (gleicher Ort mit „Ankommen“ und „Verlassen“ getrennt)
+    const gruppen = new Map();
+    for (const a of aufgaben) {
+      const o = a.ort || {};
+      const schluessel = `${o.bezeichnung || ""}|${o.ausloeser || ""}`;
+      if (!gruppen.has(schluessel)) gruppen.set(schluessel, { ort: o, aufgaben: [] });
+      gruppen.get(schluessel).aufgaben.push(a);
+    }
+    for (const { ort, aufgaben: liste } of gruppen.values()) {
+      const name = ort.bezeichnung || ort.name || "";
+      const ausloeser = ORT_AUSLOESER[ort.ausloeser] || "";
+      const karte = ort.breite != null && ort.laenge != null
+        ? `https://maps.apple.com/?ll=${ort.breite},${ort.laenge}&q=${encodeURIComponent(name)}` : "";
+      const titel = name && name !== ausloeser ? `${esc(name)} <span class="neben">· ${esc(ausloeser)}</span>` : esc(ausloeser || name);
+      html += `<div class="ortkopf"><ha-icon icon="${ORT_SYMBOL[ort.ausloeser] || "mdi:map-marker"}"></ha-icon>${karte
+        ? `<a href="${esc(karte)}" target="_blank" rel="noopener">${titel}</a>` : titel}</div>`;
+      if (ort.adresse && !config.adresse_ausblenden) html += `<div class="adresse">${esc(ort.adresse)}${ort.umkreis ? ` · ${Math.round(ort.umkreis)} m` : ""}</div>`;
+      for (const a of liste) {
+        const faellig = a.faellig
+          ? new Date(a.faellig).toLocaleDateString(sprache(hass), { day: "numeric", month: "short" }) : "";
+        html += `<div class="zeile ${a.erledigt ? "erledigt" : ""}">
+          <button class="haken ${a.erledigt ? "an" : ""}" data-uid="${esc(a.uid)}" data-erledigt="${a.erledigt}" aria-label="Abhaken">${a.erledigt ? "✓" : ""}</button>
+          <span class="text">${esc(a.titel)}${a.wiederkehrend ? " ↻" : ""}</span><span class="faellig">${esc(faellig)}</span></div>`;
+      }
+    }
+    return html;
+  }
+
+  verdrahten(wurzel) { this._aktionenVerdrahten(wurzel); }
+
+  getCardSize() { return 4; }
+
+  static getConfigForm() {
+    return {
+      schema: [
+        FELD.titel, FELD.erledigte,
+        { name: "auto_ausblenden", selector: { boolean: {} } },
+        { name: "adresse_ausblenden", selector: { boolean: {} } },
+      ],
+      computeLabel: beschriftung,
+    };
+  }
+}
+
 // ---------------------------------------------------------------- Recovery / Strain
 
 function ring(anteil, groesse = 120, breite = 10, farbe = "var(--primary-color)", innen = "", band = null) {
@@ -665,6 +735,7 @@ const KARTEN = [
   ["adhstrack-tagesplanung-card", AdhsTagesplanungKarte, "ADHS Track: Tagesplanung", "Wie das Widget: klein, mittel oder groß mit Zeitleiste."],
   ["adhstrack-kalender-card", AdhsKalenderKarte, "ADHS Track: Kalender", "Zeitleiste der nächsten 3 oder 7 Tage mit Aufgaben und Einnahmen."],
   ["adhstrack-uhr-card", AdhsUhrKarte, "ADHS Track: Uhr", "Zifferblatt mit Terminen der nächsten 6 oder 12 Stunden."],
+  ["adhstrack-orte-card", AdhsOrteKarte, "ADHS Track: Orte", "Offene Aufgaben mit Ort-Erinnerung, nach Ort gruppiert – abhakbar."],
   ["adhstrack-inbox-card", AdhsInboxKarte, "ADHS Track: Inbox", "Offene Inbox-Einträge."],
   ["adhstrack-recovery-card", AdhsRecoveryKarte, "ADHS Track: Recovery", "Recovery-Ring mit Empfehlung."],
   ["adhstrack-strain-card", AdhsStrainKarte, "ADHS Track: Strain heute", "Belastung mit Zielbereich."],

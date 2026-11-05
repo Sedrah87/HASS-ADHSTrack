@@ -89,6 +89,9 @@
       "agenda": {
         "name": "Agenda"
       },
+      "orte": {
+        "name": "Ort-Erinnerungen"
+      },
       "inbox": {
         "name": "Inbox"
       },

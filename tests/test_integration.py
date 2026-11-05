@@ -139,9 +139,31 @@ async def test_ort_erinnerung_im_kalender_und_sensor(hass: HomeAssistant, eintra
     assert agenda.attributes["aufgaben"][0]["ort"]["ausloeser"] == "ankommen"
 
 
+async def test_orte_sensor_und_abhaken_ohne_datum(hass: HomeAssistant, eintrag, hass_client_no_auth) -> None:
+    heute = dt_util.now().date().isoformat()
+    ortsaufgabe = {
+        "uid": f"O1|{heute}", "id": "O1", "datum": heute, "titel": "Milch kaufen", "erledigt": False,
+        "wiederkehrend": False, "ort": {"ausloeser": "ankommen", "bezeichnung": "Supermarkt", "breite": 52.5, "laenge": 13.4},
+    }
+    await sende(hass_client_no_auth, sync(aufgaben=[], orte=[ortsaufgabe]))
+    await hass.async_block_till_done()
+    orte = next(s for s in hass.states.async_all("sensor") if s.attributes.get("aufgaben") and s.attributes["aufgaben"][0].get("id") == "O1")
+    assert orte.state == "1"
+
+    # Abhaken über den bestehenden Dienst, obwohl die Aufgabe nicht in `aufgaben` steht
+    await hass.services.async_call(DOMAIN, "aufgabe_erledigen", {"uid": f"O1|{heute}", "erledigt": True}, blocking=True)
+    await hass.async_block_till_done()
+    assert hass.states.get(orte.entity_id).state == "0"
+    antwort = await sende(hass_client_no_auth, sync(aufgaben=[], orte=[ortsaufgabe]))
+    befehl = antwort["befehle"][0]
+    assert befehl["aufgabe_id"] == "O1" and befehl["datum"] == heute and befehl["erledigt"] is True
+
+
 async def test_einnahme_dienst_und_erinnerung_unterdrueckt(
     hass: HomeAssistant, eintrag, hass_client_no_auth, freezer: FrozenDateTimeFactory
 ) -> None:
+    # Lokaler Mittag: Einnahme und Termin liegen sicher am selben Kalendertag (sonst scheitert der Test kurz vor Mitternacht).
+    freezer.move_to(dt_util.now().replace(hour=12, minute=0, second=0, microsecond=0))
     erinnerungen = async_capture_events(hass, EVENT_ERINNERUNG)
     erinnerung = dt_util.utcnow() + timedelta(minutes=10)
     await sende(hass_client_no_auth, sync(medikamente=[medikament(erinnerung)], einnahmen=[]))
@@ -252,5 +274,5 @@ async def test_dashboard_karten_werden_ausgeliefert(hass: HomeAssistant, eintrag
     antwort = await client.get("/adhstrack_static/adhstrack-cards.js")
     assert antwort.status == 200
     text = await antwort.text()
-    for karte in ("adhstrack-agenda-card", "adhstrack-kalender-card", "adhstrack-tagesplanung-card", "adhstrack-uhr-card", "adhstrack-medikamente-card"):
+    for karte in ("adhstrack-agenda-card", "adhstrack-kalender-card", "adhstrack-tagesplanung-card", "adhstrack-uhr-card", "adhstrack-medikamente-card", "adhstrack-orte-card"):
         assert karte in text

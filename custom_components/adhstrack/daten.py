@@ -139,7 +139,7 @@ class AdhsDaten:
                 _LOGGER.debug("%s Befehl(e) von der App bestätigt", vorher - len(self.warteschlange))
 
         # Abgeschaltete Bereiche fehlen in der Nachricht: dann den letzten Stand behalten.
-        for bereich in ("koerper", "journal", "aufgaben", "inbox", "medikamente", "einnahmen"):
+        for bereich in ("koerper", "journal", "aufgaben", "orte", "inbox", "medikamente", "einnahmen"):
             if bereich in daten and daten[bereich] is not None:
                 self.stand[bereich] = daten[bereich]
 
@@ -341,8 +341,16 @@ class AdhsDaten:
             ergebnis.append(aufgabe)
         return ergebnis
 
+    def orte(self) -> list[dict[str, Any]]:
+        """Offene Aufgaben mit Ort-Erinnerung (auch ohne Datum), Status optimistisch wie bei `aufgaben`."""
+        ergebnis = []
+        for aufgabe in self.stand.get("orte") or []:
+            wartend = self._wartender_status(aufgabe.get("uid", ""))
+            ergebnis.append({**aufgabe, "erledigt": wartend} if wartend is not None else aufgabe)
+        return ergebnis
+
     def aufgabe(self, uid: str) -> dict[str, Any] | None:
-        return next((a for a in self.aufgaben() if a.get("uid") == uid), None)
+        return next((a for a in [*self.aufgaben(), *self.orte()] if a.get("uid") == uid), None)
 
     # ------------------------------------------------------------------ Befehle aus HA
 

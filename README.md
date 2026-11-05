@@ -70,7 +70,7 @@ In HA abgehakte Aufgaben und erfasste Einnahmen sind in HA sofort sichtbar. In d
 |---|---|
 | `sensor.*_recovery`, `*_schlaf`, `*_schlafdauer`, `*_strain`, `*_ruhepuls`, `*_hrv`, `*_atemfrequenz`, `*_letzte_herzfrequenz` | Körperwerte (Statistik/Verlauf) |
 | `sensor.*_koffein`, `*_alkohol`, `*_fluessigkeit`, `*_stimmung`, `*_energie` | Journal von heute |
-| `sensor.*_offene_aufgaben_heute`, `*_ueberfaellige_aufgaben`, `*_inbox`, `*_agenda` | Aufgaben (Listen als Attribute) |
+| `sensor.*_offene_aufgaben_heute`, `*_ueberfaellige_aufgaben`, `*_inbox`, `*_agenda`, `*_ort_erinnerungen` | Aufgaben (Listen als Attribute) |
 | `sensor.*_offene_einnahmen_heute`, `*_naechste_einnahme` | Medikamente (Plan als Attribut) |
 | `sensor.*_trainingszone`, `*_trainingspuls`, `binary_sensor.*_training_aktiv` | Training live |
 | `binary_sensor.*_medikament_faellig` | Eine Einnahme ist fällig und noch offen |
@@ -107,6 +107,10 @@ zeitraum: heute
 erledigte_ausblenden: true               # optional
 orte_ausblenden: true                    # optional, Ort-Erinnerungen an Aufgaben
 eingenommene_ausblenden: true            # optional
+---
+type: custom:adhstrack-orte-card         # offene Aufgaben mit Ort-Erinnerung, nach Ort gruppiert
+auto_ausblenden: true                    # optional, Einsteigen/Aussteigen ausblenden
+adresse_ausblenden: true                 # optional
 ---
 type: custom:adhstrack-kalender-card     # Zeitleiste der nächsten 3 oder 7 Tage
 tage: "7"

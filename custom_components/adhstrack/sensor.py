@@ -148,6 +148,11 @@ SENSOREN: tuple[AdhsSensorBeschreibung, ...] = (
         attribute=lambda d: {"aufgaben": d.aufgaben()},
     ),
     AdhsSensorBeschreibung(
+        key="orte", state_class=SensorStateClass.MEASUREMENT,
+        wert=lambda d: sum(1 for a in d.orte() if not a.get("erledigt")) if d.stand.get("orte") is not None else None,
+        attribute=lambda d: {"aufgaben": d.orte()},
+    ),
+    AdhsSensorBeschreibung(
         key="inbox", state_class=SensorStateClass.MEASUREMENT,
         wert=lambda d: (d.stand.get("inbox") or {}).get("anzahl"),
         attribute=lambda d: {"eintraege": (d.stand.get("inbox") or {}).get("eintraege", [])},

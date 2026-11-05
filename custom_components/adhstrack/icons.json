@@ -17,6 +17,7 @@
       "aufgaben_offen": { "default": "mdi:checkbox-marked-circle-outline" },
       "aufgaben_ueberfaellig": { "default": "mdi:alert-circle-outline" },
       "agenda": { "default": "mdi:calendar-text" },
+      "orte": { "default": "mdi:map-marker-radius" },
       "inbox": { "default": "mdi:inbox" },
       "medikamente": { "default": "mdi:pill" },
       "naechste_einnahme": { "default": "mdi:pill-multiple" },
