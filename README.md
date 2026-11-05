@@ -6,7 +6,7 @@ Verbindet die iOS-App **ADHS Track** mit Home Assistant. Du brauchst weder Nabu 
 
 - **Körperwerte** als Sensoren mit Verlauf: Recovery, Schlaf (% und Dauer), Strain, Ruhepuls, HRV, Atemfrequenz und letzte Herzfrequenz.
 - **Körper-Journal**: Koffein, Alkohol, Flüssigkeit, Stimmung und Energie.
-- **Aufgaben** als To-do-Liste, in HA abhakbar. Die App übernimmt den Haken beim nächsten Abgleich.
+- **Aufgaben** als To-do-Liste, in HA abhakbar. Die App übernimmt den Haken beim nächsten Abgleich; HA zeigt ihn erst, wenn das iPhone ihn bestätigt hat.
 - **Kalender** mit Aufgaben, Terminen aus den iOS-Kalendern der App und geplanten Einnahmen für heute bis +6 Tage – alles in einem Kalender.
 - **Medikamente**: Ereignisse zur Erinnerungszeit (nur wenn noch nicht eingenommen) und bei jeder Einnahme. Einnahmen lassen sich auch aus HA erfassen, z. B. per NFC-Tag.
 - **Training live**: Puls, Trainingszone und Tempohinweis während Rudern oder Yoga, plus ein Ereignis bei Zonenwechsel.
@@ -62,7 +62,7 @@ Du kannst die Daten in der App auch von Hand eintragen, unter **Mehr › Home As
 - nach Körper-Updates, auch über die stündliche Health-Hintergrundaktualisierung
 - per iOS-Hintergrundabruf, dessen Takt iOS bestimmt
 
-In HA abgehakte Aufgaben und erfasste Einnahmen sind in HA sofort sichtbar. In der App kommen sie beim nächsten Abgleich an, und jeder Befehl wird dort genau einmal angewendet.
+In HA abgehakte Aufgaben zeigen zunächst eine Sanduhr („wartet auf das iPhone“). Die App übernimmt die Änderung beim nächsten Abgleich und bestätigt sie; erst dann zeigt HA den neuen Stand. Geht unterwegs etwas verloren, wird der Befehl beim nächsten Abgleich erneut zugestellt; die App wendet jeden Befehl genau einmal an. Erneutes Antippen der Sanduhr nimmt die Änderung zurück.
 
 ## Entitäten
 

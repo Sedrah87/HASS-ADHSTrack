@@ -5,7 +5,7 @@
  * damit sie unabhängig von Sprache und Entitäts-IDs funktionieren. Optional per `entity` überschreibbar.
  */
 
-const VERSION = "0.5.0";
+const VERSION = "0.5.1";
 const DOMAIN = "adhstrack";
 
 // ---------------------------------------------------------------- Hilfsfunktionen
@@ -86,7 +86,7 @@ function eintraege(hass, config, { tage = 1, mitUeberfaelligen = true } = {}) {
     if (!(a.datum >= heute && a.datum <= bis) && !(mitUeberfaelligen && ueberfaellig)) continue;
     if (config.erledigte_ausblenden && a.erledigt) continue;
     liste.push({ art: "aufgabe", datum: ueberfaellig ? "ueberfaellig" : a.datum, start: a.start, ende: a.ende, titel: a.titel,
-      erledigt: a.erledigt, ueberfaellig: a.ueberfaellig, uid: a.uid, farbe: a.farbe, liste: a.liste,
+      erledigt: a.erledigt, wartet: a.wartet, ueberfaellig: a.ueberfaellig, uid: a.uid, farbe: a.farbe, liste: a.liste,
       ort: config.orte_ausblenden ? null : a.ort });
   }
   if (!config.termine_ausblenden) {
@@ -134,6 +134,9 @@ const BASIS_STIL = `
   .haken { width: 22px; height: 22px; flex: none; border-radius: 50%; border: 2px solid var(--primary-color);
            background: none; cursor: pointer; padding: 0; display: grid; place-items: center; color: var(--text-primary-color, #fff); }
   .haken.an { background: var(--primary-color); }
+  .haken.wartet { border-style: dashed; color: var(--primary-color); background: none; }
+  .haken.an.wartet { color: var(--text-primary-color, #fff); background: var(--primary-color); }
+  .haken ha-icon { --mdc-icon-size: 14px; }
   .knopf { border: none; border-radius: 16px; padding: 4px 12px; cursor: pointer; font: inherit; font-size: 0.85em;
            background: var(--primary-color); color: var(--text-primary-color, #fff); flex: none; }
   .knopf.zweit { background: none; color: var(--primary-color); border: 1px solid var(--primary-color); }
@@ -228,7 +231,12 @@ class AdhsBasisKarte extends HTMLElement {
 
   _aktionenVerdrahten(wurzel) {
     wurzel.querySelectorAll("[data-uid]").forEach((el) =>
-      el.addEventListener("click", () => this._dienst("aufgabe_erledigen", { uid: el.dataset.uid, erledigt: el.dataset.erledigt !== "true" })));
+      el.addEventListener("click", () => {
+        // Sofort sichtbar: wartet auf das iPhone (die Karte zeichnet beim nächsten Zustandswechsel neu).
+        el.classList.add("wartet");
+        el.innerHTML = `<ha-icon icon="mdi:timer-sand"></ha-icon>`;
+        this._dienst("aufgabe_erledigen", { uid: el.dataset.uid, erledigt: el.dataset.erledigt !== "true" });
+      }));
     wurzel.querySelectorAll("[data-med]").forEach((el) =>
       el.addEventListener("click", () => { el.disabled = true; this._dienst("einnahme_erfassen", { medikament: el.dataset.med }); }));
     wurzel.querySelectorAll("[data-alle]").forEach((el) =>
@@ -241,11 +249,23 @@ class AdhsBasisKarte extends HTMLElement {
   static getStubConfig() { return { ...(this.standard || {}) }; }
 }
 
+/**
+ * Haken einer Aufgabe. Angezeigt wird immer der Stand der App; eine noch nicht vom iPhone bestätigte Änderung
+ * erscheint als Sanduhr (`wartet` = Sollwert). Erneutes Antippen nimmt die wartende Änderung zurück.
+ */
+function hakenHtml(a) {
+  const wartet = a.wartet !== undefined && a.wartet !== null;
+  const soll = wartet ? a.wartet : a.erledigt;
+  const titel = wartet ? (a.wartet ? "Wartet auf das iPhone: erledigt" : "Wartet auf das iPhone: offen") : "Abhaken";
+  return `<button class="haken ${a.erledigt ? "an" : ""} ${wartet ? "wartet" : ""}" data-uid="${esc(a.uid)}" data-erledigt="${soll}" title="${titel}" aria-label="${titel}">${
+    wartet ? `<ha-icon icon="mdi:timer-sand"></ha-icon>` : a.erledigt ? "✓" : ""}</button>`;
+}
+
 function zeileHtml(hass, e, { mitAktionen = true, heute = heuteText() } = {}) {
   const klassen = ["zeile", e.erledigt ? "erledigt" : "", e.ueberfaellig && !e.erledigt ? "ueberfaellig" : ""].join(" ");
   if (e.art === "aufgabe") {
     const haken = mitAktionen
-      ? `<button class="haken ${e.erledigt ? "an" : ""}" data-uid="${esc(e.uid)}" data-erledigt="${e.erledigt}" aria-label="Abhaken">${e.erledigt ? "✓" : ""}</button>`
+      ? hakenHtml(e)
       : `<span class="punkt" style="background:${esc(e.farbe || "var(--primary-color)")}"></span>`;
     return `<div class="${klassen}">${haken}<span class="zeit">${uhrzeit(hass, e.start)}</span><span class="text">${esc(e.titel)}${ortHtml(e.ort)}</span></div>`;
   }
@@ -616,7 +636,7 @@ class AdhsOrteKarte extends AdhsBasisKarte {
         const faellig = a.faellig
           ? new Date(a.faellig).toLocaleDateString(sprache(hass), { day: "numeric", month: "short" }) : "";
         html += `<div class="zeile ${a.erledigt ? "erledigt" : ""}">
-          <button class="haken ${a.erledigt ? "an" : ""}" data-uid="${esc(a.uid)}" data-erledigt="${a.erledigt}" aria-label="Abhaken">${a.erledigt ? "✓" : ""}</button>
+          ${hakenHtml(a)}
           <span class="text">${esc(a.titel)}${a.wiederkehrend ? " ↻" : ""}</span><span class="faellig">${esc(faellig)}</span></div>`;
       }
     }

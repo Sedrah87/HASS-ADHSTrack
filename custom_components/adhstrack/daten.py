@@ -348,22 +348,17 @@ class AdhsDaten:
         return None
 
     def aufgaben(self) -> list[dict[str, Any]]:
-        """Aufgaben mit optimistisch übernommenem Status aus HA."""
-        ergebnis = []
-        for aufgabe in self.stand.get("aufgaben") or []:
-            wartend = self._wartender_status(aufgabe.get("uid", ""))
-            if wartend is not None:
-                aufgabe = {**aufgabe, "erledigt": wartend, "ueberfaellig": aufgabe.get("ueberfaellig") and not wartend}
-            ergebnis.append(aufgabe)
-        return ergebnis
+        """Aufgaben im Stand der App. Noch nicht bestätigte Änderungen aus HA stehen nur in `wartet` (Sollwert);
+        `erledigt` ändert sich erst, wenn das iPhone den Befehl verarbeitet und bestätigt hat."""
+        return [self._mit_wartend(a) for a in self.stand.get("aufgaben") or []]
 
     def orte(self) -> list[dict[str, Any]]:
-        """Offene Aufgaben mit Ort-Erinnerung (auch ohne Datum), Status optimistisch wie bei `aufgaben`."""
-        ergebnis = []
-        for aufgabe in self.stand.get("orte") or []:
-            wartend = self._wartender_status(aufgabe.get("uid", ""))
-            ergebnis.append({**aufgabe, "erledigt": wartend} if wartend is not None else aufgabe)
-        return ergebnis
+        """Offene Aufgaben mit Ort-Erinnerung (auch ohne Datum), `wartet` wie bei `aufgaben`."""
+        return [self._mit_wartend(a) for a in self.stand.get("orte") or []]
+
+    def _mit_wartend(self, aufgabe: dict[str, Any]) -> dict[str, Any]:
+        wartend = self._wartender_status(aufgabe.get("uid", ""))
+        return {**aufgabe, "wartet": wartend} if wartend is not None else aufgabe
 
     def termine(self) -> list[dict[str, Any]]:
         """Termine aus den iOS-Kalendern der App (nur lesend)."""

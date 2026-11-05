@@ -1,4 +1,4 @@
-"""To-do-Liste: heutige und überfällige Aufgaben, abhakbar (wird beim nächsten Abgleich in die App übernommen)."""
+"""To-do-Liste: heutige und überfällige Aufgaben, abhakbar. Der Status ändert sich erst, wenn das iPhone die Änderung bestätigt hat."""
 
 from __future__ import annotations
 
@@ -18,6 +18,16 @@ async def async_setup_entry(
     hass: HomeAssistant, entry: AdhsConfigEntry, async_add_entities: AddConfigEntryEntitiesCallback
 ) -> None:
     async_add_entities([AdhsAufgabenListe(entry.runtime_data)])
+
+
+_WARTET_HINWEIS = "⏳ Wird an das iPhone übertragen …"
+
+
+def _beschreibung(aufgabe: dict) -> str | None:
+    """Notiz der App, bei unbestätigter Änderung mit Hinweis davor."""
+    if aufgabe.get("wartet") is None:
+        return aufgabe.get("notiz")
+    return "\n".join(t for t in (_WARTET_HINWEIS, aufgabe.get("notiz")) if t)
 
 
 class AdhsAufgabenListe(AdhsEntity, TodoListEntity):
@@ -41,7 +51,7 @@ class AdhsAufgabenListe(AdhsEntity, TodoListEntity):
                     summary=a.get("titel") or "",
                     status=TodoItemStatus.COMPLETED if a.get("erledigt") else TodoItemStatus.NEEDS_ACTION,
                     due=dt_util.as_local(z) if (z := parse_zeit(a.get("start"))) else None,
-                    description=a.get("notiz"),
+                    description=_beschreibung(a),
                 )
             )
         return eintraege
@@ -52,7 +62,7 @@ class AdhsAufgabenListe(AdhsEntity, TodoListEntity):
             raise ServiceValidationError(
                 translation_domain=DOMAIN, translation_key="aufgabe_unbekannt", translation_placeholders={"uid": item.uid or ""}
             )
-        if item.summary not in (None, aktuell.get("titel")) or item.description not in (None, aktuell.get("notiz")):
+        if item.summary not in (None, aktuell.get("titel")) or item.description not in (None, aktuell.get("notiz"), _beschreibung(aktuell)):
             raise ServiceValidationError(translation_domain=DOMAIN, translation_key="nur_status")
         if item.status is not None:
             self.daten.aufgabe_setzen(item.uid or "", item.status == TodoItemStatus.COMPLETED)

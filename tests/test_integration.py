@@ -102,18 +102,29 @@ async def test_aufgabe_abhaken_und_bestaetigen(hass: HomeAssistant, eintrag, has
     await hass.services.async_call(
         "todo", "update_item", {"item": f"A1|{heute}", "status": "completed"}, target={"entity_id": todo_id}, blocking=True
     )
-    # Optimistisch sofort erledigt
-    assert hass.states.get(todo_id).state == "0"
+    # Nicht optimistisch: Stand der App bleibt, die Änderung wartet auf das iPhone.
+    agenda = next(s for s in hass.states.async_all("sensor") if s.attributes.get("termine") is not None)
+    assert hass.states.get(todo_id).state == "1"
+    assert hass.states.get(agenda.entity_id).attributes["aufgaben"][0]["wartet"] is True
+    assert hass.states.get(agenda.entity_id).attributes["aufgaben"][0]["erledigt"] is False
 
     antwort = await sende(hass_client_no_auth, sync(aufgaben=[aufgabe("A1", heute)]))
     befehl = antwort["befehle"][0]
     assert befehl["art"] == "aufgabe_status" and befehl["aufgabe_id"] == "A1" and befehl["erledigt"] is True
-    # App hat noch alten Stand gemeldet → Anzeige bleibt erledigt
+    # Antwort mit dem Befehl ist unterwegs, App meldet noch den alten Stand → wartet weiter
     await hass.async_block_till_done()
-    assert hass.states.get(todo_id).state == "0"
+    assert hass.states.get(todo_id).state == "1"
 
+    # Antwort verloren: der nächste Abgleich ohne Bestätigung stellt denselben Befehl erneut zu
+    antwort = await sende(hass_client_no_auth, sync(aufgaben=[aufgabe("A1", heute)]))
+    assert [b["id"] for b in antwort["befehle"]] == [befehl["id"]]
+
+    # iPhone hat verarbeitet und bestätigt → erst jetzt erledigt
     antwort = await sende(hass_client_no_auth, sync(aufgaben=[aufgabe("A1", heute, erledigt=True)], bestaetigt=[befehl["id"]]))
     assert antwort["befehle"] == []
+    await hass.async_block_till_done()
+    assert hass.states.get(todo_id).state == "0"
+    assert "wartet" not in hass.states.get(agenda.entity_id).attributes["aufgaben"][0]
 
 
 async def test_kalendertermine_im_kalender_und_agenda(hass: HomeAssistant, eintrag, hass_client_no_auth) -> None:
@@ -188,7 +199,8 @@ async def test_orte_sensor_und_abhaken_ohne_datum(hass: HomeAssistant, eintrag, 
     # Abhaken über den bestehenden Dienst, obwohl die Aufgabe nicht in `aufgaben` steht
     await hass.services.async_call(DOMAIN, "aufgabe_erledigen", {"uid": f"O1|{heute}", "erledigt": True}, blocking=True)
     await hass.async_block_till_done()
-    assert hass.states.get(orte.entity_id).state == "0"
+    assert hass.states.get(orte.entity_id).state == "1"
+    assert hass.states.get(orte.entity_id).attributes["aufgaben"][0]["wartet"] is True
     antwort = await sende(hass_client_no_auth, sync(aufgaben=[], orte=[ortsaufgabe]))
     befehl = antwort["befehle"][0]
     assert befehl["aufgabe_id"] == "O1" and befehl["datum"] == heute and befehl["erledigt"] is True
