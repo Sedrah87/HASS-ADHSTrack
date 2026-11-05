@@ -2,6 +2,11 @@
 
 Alle sichtbaren Änderungen an der Integration „ADHS Track“. Die Version steht in Home Assistant bzw. im Marketplace/HACS; die Release-Notizen auf GitHub werden aus dieser Datei erzeugt.
 
+## [0.5.2] – 2026-11-05
+
+### Behoben
+- Das Logo in der Beschreibung in HACS/Marketplace wird wieder angezeigt.
+
 ## [0.5.1] – 2026-11-05
 
 ### Geändert

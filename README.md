@@ -1,6 +1,6 @@
 # ADHS Track für Home Assistant
 
-<img src="custom_components/adhstrack/brand/icon.png" alt="ADHS Track" width="96" align="right">
+<img src="https://raw.githubusercontent.com/Sedrah87/HASS-ADHSTrack/main/custom_components/adhstrack/brand/icon.png" alt="ADHS Track" width="96" align="right">
 
 Verbindet die iOS-App **ADHS Track** mit Home Assistant. Du brauchst weder Nabu Casa noch die Companion-App: Die App schickt ihre Daten per Webhook an deine eigene HA-Adresse.
 
