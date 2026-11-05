@@ -29,7 +29,7 @@ class AdhsAufgabenListe(AdhsEntity, TodoListEntity):
 
     @property
     def todo_items(self) -> list[TodoItem]:
-        heute = dt_util.now().date().isoformat()
+        heute = self.daten.heute()
         eintraege = []
         for a in self.daten.aufgaben():
             # Heute plus Überfälliges aus früheren Tagen; die Folgetage stehen im Kalender.

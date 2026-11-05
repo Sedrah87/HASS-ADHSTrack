@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, tzinfo
 import logging
 from typing import Any
 import uuid
@@ -50,9 +50,9 @@ def parse_zeit(wert: Any) -> datetime | None:
     return zeit
 
 
-def tag_text(zeit: datetime) -> str:
-    """Kalendertag (lokale HA-Zeitzone) als yyyy-MM-dd."""
-    return dt_util.as_local(zeit).date().isoformat()
+def tag_text(zeit: datetime, zeitzone: tzinfo | None = None) -> str:
+    """Kalendertag als yyyy-MM-dd (Standard: lokale HA-Zeitzone)."""
+    return zeit.astimezone(zeitzone).date().isoformat() if zeitzone else dt_util.as_local(zeit).date().isoformat()
 
 
 @dataclass
@@ -138,6 +138,10 @@ class AdhsDaten:
             if len(self.warteschlange) != vorher:
                 _LOGGER.debug("%s Befehl(e) von der App bestätigt", vorher - len(self.warteschlange))
 
+        # Zeitzone des iPhones: die App bildet `datum` (Termine, Aufgaben) in dieser Zone.
+        if isinstance(daten.get("zeitzone"), str) and dt_util.get_time_zone(daten["zeitzone"]) is not None:
+            self.stand["zeitzone"] = daten["zeitzone"]
+
         # Abgeschaltete Bereiche fehlen in der Nachricht: dann den letzten Stand behalten.
         for bereich in ("koerper", "journal", "aufgaben", "orte", "inbox", "medikamente", "einnahmen"):
             if bereich in daten and daten[bereich] is not None:
@@ -213,13 +217,25 @@ class AdhsDaten:
         self.einnahmen_initialisiert = True
         self.gesehene_einnahmen = self.gesehene_einnahmen[-_MERK_GRENZE:]
 
+    def zeitzone(self) -> tzinfo | None:
+        """Zeitzone der App; ohne Angabe (ältere App) die von HA (None)."""
+        name = self.stand.get("zeitzone")
+        return dt_util.get_time_zone(name) if name else None
+
+    def tag(self, zeit: datetime) -> str:
+        """Kalendertag wie in der App – nur so passt er zu `datum` aus der App."""
+        return tag_text(zeit, self.zeitzone())
+
+    def heute(self) -> str:
+        return self.tag(dt_util.utcnow())
+
     def _wartende_einnahme(self, med_id: str, tag: str) -> bool:
         """Einnahme aus HA, die die App noch nicht übernommen hat (optimistische Anzeige)."""
         return any(
             b["art"] == BEFEHL_EINNAHME
             and b.get("med_id") == med_id
             and (zeit := parse_zeit(b.get("zeitpunkt"))) is not None
-            and tag_text(zeit) == tag
+            and self.tag(zeit) == tag
             for b in self.warteschlange
         )
 
@@ -239,7 +255,7 @@ class AdhsDaten:
         return ergebnis
 
     def termine_heute(self) -> list[tuple[dict[str, Any], dict[str, Any]]]:
-        heute = dt_util.now().date().isoformat()
+        heute = self.heute()
         return [
             (med, termin)
             for med in self.medikamente()
@@ -382,7 +398,7 @@ class AdhsDaten:
         if not any(m.get("id") == med_id for m in self.stand.get("medikamente") or []):
             return False
         zeit = zeitpunkt or dt_util.utcnow()
-        if self._wartende_einnahme(med_id, tag_text(zeit)):
+        if self._wartende_einnahme(med_id, self.tag(zeit)):
             return True
         self.warteschlange.append(
             {

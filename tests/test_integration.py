@@ -180,6 +180,35 @@ async def test_einnahme_dienst_und_erinnerung_unterdrueckt(
     assert erinnerungen == []
 
 
+async def test_tag_in_zeitzone_der_app(
+    hass: HomeAssistant, eintrag, hass_client_no_auth, freezer: FrozenDateTimeFactory
+) -> None:
+    """HA (Testzone US/Pacific) und App (Europe/Berlin) liegen an verschiedenen Kalendertagen.
+
+    07:00 UTC = 08:00 Berlin (5.11.) = 23:00 Pacific (4.11.). Die App meldet `datum` in ihrer Zone;
+    HA muss die Einnahme demselben Tag zuordnen, sonst bleibt der Termin offen und die Erinnerung kommt.
+    """
+    await hass.config.async_set_time_zone("US/Pacific")
+    freezer.move_to("2026-11-05T07:00:00+00:00")
+    erinnerungen = async_capture_events(hass, EVENT_ERINNERUNG)
+    erinnerung = dt_util.utcnow() + timedelta(hours=1)
+    plan = {**medikament(erinnerung), "plan": [{**medikament(erinnerung)["plan"][0], "datum": "2026-11-05"}]}
+    await sende(hass_client_no_auth, sync(zeitzone="Europe/Berlin", medikamente=[plan], einnahmen=[]))
+    await hass.async_block_till_done()
+
+    offene = next(s for s in hass.states.async_all("sensor") if "faellig" in s.attributes)
+    assert offene.state == "1"  # „heute“ = 5.11. (Berlin), nicht 4.11. (Pacific)
+
+    await hass.services.async_call(DOMAIN, "einnahme_erfassen", {"medikament": "elvanse"}, blocking=True)
+    await hass.async_block_till_done()
+    assert hass.states.get(offene.entity_id).state == "0"
+
+    freezer.move_to(erinnerung + timedelta(seconds=1))
+    async_fire_time_changed(hass)
+    await hass.async_block_till_done()
+    assert erinnerungen == []
+
+
 async def test_erinnerung_feuert_wenn_offen(
     hass: HomeAssistant, eintrag, hass_client_no_auth, freezer: FrozenDateTimeFactory
 ) -> None:

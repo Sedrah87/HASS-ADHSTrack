@@ -16,7 +16,6 @@ from homeassistant.components.sensor import (
 from homeassistant.const import PERCENTAGE, EntityCategory, UnitOfTime, UnitOfVolume
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
-from homeassistant.util import dt as dt_util
 
 from . import AdhsConfigEntry
 from .daten import AdhsDaten, parse_zeit
@@ -38,7 +37,7 @@ def _t(feld: str) -> Callable[[AdhsDaten], Any]:
 
 
 def _heute(d: AdhsDaten) -> list[dict[str, Any]]:
-    heute = dt_util.now().date().isoformat()
+    heute = d.heute()
     return [a for a in d.aufgaben() if a.get("datum") == heute]
 
 
