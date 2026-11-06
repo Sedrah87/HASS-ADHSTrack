@@ -101,12 +101,15 @@ Alle Karten findest du unter **Karte hinzufügen**, Suchbegriff „ADHS Track“
 
 Gemeinsame Schalter (alle standardmäßig aus): `erledigte_ausblenden`, `orte_ausblenden`, `eingenommene_ausblenden`, `medikamente_ausblenden`, `termine_ausblenden` und `umschalter_ausblenden`. Ältere Optionen wie `zeige_medikamente: false` werden weiter verstanden.
 
+Aufgaben ohne Uhrzeit stehen oben als „ganzt.“ (nicht auf Uhr und Zeitleiste), Aufgaben ohne Datum in der Agenda-Karte unter „Ohne Datum“ und in der To-do-Liste. Hat die App zu einer Aufgabe einen Kalendereintrag angelegt, erscheint nur die Aufgabe – mit Kalendersymbol.
+
 ```yaml
 type: custom:adhstrack-agenda-card       # Heute / 3 / 7 Tage, abhakbar
 zeitraum: heute
 erledigte_ausblenden: true               # optional
 orte_ausblenden: true                    # optional, Ort-Erinnerungen an Aufgaben
 eingenommene_ausblenden: true            # optional
+ohne_datum_ausblenden: true              # optional, Gruppe „Ohne Datum“ am Ende
 ---
 type: custom:adhstrack-orte-card         # offene Aufgaben mit Ort-Erinnerung, nach Ort gruppiert
 auto_ausblenden: true                    # optional, Einsteigen/Aussteigen ausblenden
@@ -118,7 +121,7 @@ tage: "7"
 type: custom:adhstrack-tagesplanung-card # groesse: s | m | l (Zeitleiste)
 groesse: l
 ---
-type: custom:adhstrack-uhr-card          # modus: 12h | 6h
+type: custom:adhstrack-uhr-card          # modus: 12h | 6h, Einträge nummeriert unter der Uhr
 modus: 6h
 ---
 type: custom:adhstrack-inbox-card

@@ -144,7 +144,7 @@ SENSOREN: tuple[AdhsSensorBeschreibung, ...] = (
     AdhsSensorBeschreibung(
         key="agenda",
         wert=lambda d: len(d.aufgaben()) if d.stand.get("aufgaben") is not None else None,
-        attribute=lambda d: {"aufgaben": d.aufgaben(), "termine": d.termine()},
+        attribute=lambda d: {"aufgaben": d.aufgaben(), "termine": d.termine(), "ohne_datum": d.ohne_datum()},
     ),
     AdhsSensorBeschreibung(
         key="orte", state_class=SensorStateClass.MEASUREMENT,
@@ -194,7 +194,7 @@ async def async_setup_entry(
 
 class AdhsSensor(AdhsEntity, SensorEntity):
     # Listen können groß werden (Recorder speichert Attribute über 16 KB ohnehin nicht).
-    _unrecorded_attributes = frozenset({"aufgaben", "eintraege", "medikamente", "faellig"})
+    _unrecorded_attributes = frozenset({"aufgaben", "eintraege", "medikamente", "faellig", "termine", "ohne_datum"})
 
     entity_description: AdhsSensorBeschreibung
 

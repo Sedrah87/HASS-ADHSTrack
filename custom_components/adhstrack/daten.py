@@ -145,7 +145,7 @@ class AdhsDaten:
             self.stand["zeitzone"] = daten["zeitzone"]
 
         # Abgeschaltete Bereiche fehlen in der Nachricht: dann den letzten Stand behalten.
-        for bereich in ("koerper", "journal", "aufgaben", "orte", "inbox", "termine", "medikamente", "einnahmen"):
+        for bereich in ("koerper", "journal", "aufgaben", "orte", "ohne_datum", "inbox", "termine", "medikamente", "einnahmen"):
             if bereich in daten and daten[bereich] is not None:
                 self.stand[bereich] = daten[bereich]
 
@@ -358,6 +358,10 @@ class AdhsDaten:
         """Offene Aufgaben mit Ort-Erinnerung (auch ohne Datum), `wartet` wie bei `aufgaben`."""
         return [self._gefaerbt("aufgaben", self._mit_wartend(a)) for a in self.stand.get("orte") or []]
 
+    def ohne_datum(self) -> list[dict[str, Any]]:
+        """Aufgaben ohne Datum (offen bzw. heute erledigt), `wartet` wie bei `aufgaben`."""
+        return [self._gefaerbt("aufgaben", self._mit_wartend(a)) for a in self.stand.get("ohne_datum") or []]
+
     def _gefaerbt(self, art: str, eintrag: dict[str, Any]) -> dict[str, Any]:
         """Eintrag mit der eigenen Farbe der Art, sofern gewählt."""
         farbe = self.farben.get(art)
@@ -372,7 +376,7 @@ class AdhsDaten:
         return [self._gefaerbt("termine", t) for t in self.stand.get("termine") or []]
 
     def aufgabe(self, uid: str) -> dict[str, Any] | None:
-        return next((a for a in [*self.aufgaben(), *self.orte()] if a.get("uid") == uid), None)
+        return next((a for a in [*self.aufgaben(), *self.orte(), *self.ohne_datum()] if a.get("uid") == uid), None)
 
     # ------------------------------------------------------------------ Befehle aus HA
 

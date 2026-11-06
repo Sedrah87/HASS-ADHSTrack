@@ -1,4 +1,4 @@
-"""To-do-Liste: heutige und überfällige Aufgaben, abhakbar. Der Status ändert sich erst, wenn das iPhone die Änderung bestätigt hat."""
+"""To-do-Liste: heutige, überfällige und Aufgaben ohne Datum, abhakbar. Der Status ändert sich erst, wenn das iPhone die Änderung bestätigt hat."""
 
 from __future__ import annotations
 
@@ -45,12 +45,25 @@ class AdhsAufgabenListe(AdhsEntity, TodoListEntity):
             # Heute plus Überfälliges aus früheren Tagen; die Folgetage stehen im Kalender.
             if a.get("datum") != heute and not (a.get("ueberfaellig") and not a.get("erledigt")):
                 continue
+            start = parse_zeit(a.get("start"))
+            # Ohne Uhrzeit nur das Datum als Fälligkeit.
+            due = (dt_util.as_local(start).date() if a.get("ohne_zeit") else dt_util.as_local(start)) if start else None
             eintraege.append(
                 TodoItem(
                     uid=a["uid"],
                     summary=a.get("titel") or "",
                     status=TodoItemStatus.COMPLETED if a.get("erledigt") else TodoItemStatus.NEEDS_ACTION,
-                    due=dt_util.as_local(z) if (z := parse_zeit(a.get("start"))) else None,
+                    due=due,
+                    description=_beschreibung(a),
+                )
+            )
+        # Aufgaben ohne Datum am Ende, ohne Fälligkeit.
+        for a in self.daten.ohne_datum():
+            eintraege.append(
+                TodoItem(
+                    uid=a["uid"],
+                    summary=a.get("titel") or "",
+                    status=TodoItemStatus.COMPLETED if a.get("erledigt") else TodoItemStatus.NEEDS_ACTION,
                     description=_beschreibung(a),
                 )
             )

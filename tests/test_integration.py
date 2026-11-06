@@ -206,6 +206,46 @@ async def test_orte_sensor_und_abhaken_ohne_datum(hass: HomeAssistant, eintrag, 
     assert befehl["aufgabe_id"] == "O1" and befehl["datum"] == heute and befehl["erledigt"] is True
 
 
+async def test_aufgaben_ohne_datum_und_ohne_uhrzeit(hass: HomeAssistant, eintrag, hass_client_no_auth) -> None:
+    heute = dt_util.now().date()
+    ohne_zeit = {**aufgabe("A2", heute.isoformat()), "start": iso(dt_util.start_of_local_day()), "ohne_zeit": True, "im_kalender": True}
+    undatiert = {"uid": f"U1|{heute.isoformat()}", "id": "U1", "datum": heute.isoformat(), "titel": "Irgendwann",
+                 "erledigt": False, "prioritaet": "mittel"}
+    await sende(hass_client_no_auth, sync(aufgaben=[ohne_zeit], ohne_datum=[undatiert]))
+    await hass.async_block_till_done()
+
+    agenda = next(s for s in hass.states.async_all("sensor") if s.attributes.get("ohne_datum"))
+    assert agenda.attributes["ohne_datum"][0]["titel"] == "Irgendwann"
+    assert agenda.attributes["aufgaben"][0]["im_kalender"] is True
+
+    # To-do-Liste: Aufgabe ohne Uhrzeit mit reinem Datum, Aufgabe ohne Datum ohne Fälligkeit.
+    todo_id = next(s.entity_id for s in hass.states.async_all("todo"))
+    assert hass.states.get(todo_id).state == "2"
+    antwort = await hass.services.async_call(
+        "todo", "get_items", {}, target={"entity_id": todo_id}, blocking=True, return_response=True
+    )
+    eintraege = {e["summary"]: e for e in antwort[todo_id]["items"]}
+    assert eintraege["Aufgabe A2"]["due"] == heute.isoformat()
+    assert "due" not in eintraege["Irgendwann"] or eintraege["Irgendwann"]["due"] is None
+
+    # Kalender: ohne Uhrzeit ganztägig, ohne Datum gar nicht.
+    kalender_id = next(s.entity_id for s in hass.states.async_all("calendar"))
+    antwort = await hass.services.async_call(
+        "calendar", "get_events",
+        {"start_date_time": dt_util.start_of_local_day(), "end_date_time": dt_util.start_of_local_day() + timedelta(days=2)},
+        target={"entity_id": kalender_id}, blocking=True, return_response=True,
+    )
+    ereignisse = {e["summary"]: e for e in antwort[kalender_id]["events"]}
+    assert set(ereignisse) == {"Aufgabe A2"}
+    assert ereignisse["Aufgabe A2"]["start"] == heute.isoformat()
+
+    # Abhaken einer Aufgabe ohne Datum über den bestehenden Dienst.
+    await hass.services.async_call(DOMAIN, "aufgabe_erledigen", {"uid": undatiert["uid"], "erledigt": True}, blocking=True)
+    antwort = await sende(hass_client_no_auth, sync(aufgaben=[ohne_zeit], ohne_datum=[undatiert]))
+    befehl = antwort["befehle"][0]
+    assert befehl["aufgabe_id"] == "U1" and befehl["datum"] == heute.isoformat() and befehl["erledigt"] is True
+
+
 async def test_einnahme_dienst_und_erinnerung_unterdrueckt(
     hass: HomeAssistant, eintrag, hass_client_no_auth, freezer: FrozenDateTimeFactory
 ) -> None:

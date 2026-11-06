@@ -33,13 +33,22 @@ class AdhsKalender(AdhsEntity, CalendarEntity):
             start = parse_zeit(a.get("start"))
             if start is None:
                 continue
-            ende = parse_zeit(a.get("ende")) or start + _STANDARD_DAUER
+            if a.get("ohne_zeit"):
+                # Ohne Uhrzeit: ganztägig am Tag der Aufgabe.
+                try:
+                    tag = date.fromisoformat(a["datum"])
+                except (KeyError, TypeError, ValueError):
+                    continue
+                start_wert, ende_wert = tag, tag + timedelta(days=1)
+            else:
+                start_wert = dt_util.as_local(start)
+                ende_wert = dt_util.as_local(parse_zeit(a.get("ende")) or start + _STANDARD_DAUER)
             haken = "✓ " if a.get("erledigt") else ""
             ort = a.get("ort") or {}
             termine.append(
                 CalendarEvent(
-                    start=dt_util.as_local(start),
-                    end=dt_util.as_local(ende),
+                    start=start_wert,
+                    end=ende_wert,
                     summary=f"{haken}{a.get('titel') or ''}",
                     description=a.get("notiz"),
                     location=ort.get("adresse") or ort.get("bezeichnung"),

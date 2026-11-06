@@ -2,6 +2,18 @@
 
 Alle sichtbaren Änderungen an der Integration „ADHS Track“. Die Version steht in Home Assistant bzw. im Marketplace/HACS; die Release-Notizen auf GitHub werden aus dieser Datei erzeugt.
 
+## [0.7.0] – 2026-11-06
+
+### Neu
+- **Aufgaben ohne Datum:** Die Agenda-Karte zeigt sie am Ende in der Gruppe „Ohne Datum“ (abhakbar, Schalter `ohne_datum_ausblenden`), die To-do-Liste ohne Fälligkeit.
+- **Uhrenkarte:** Die Einträge stehen jetzt nummeriert unter der Uhr – Namen sind ohne Mouseover lesbar, die Nummer am Bogen zeigt die Zuordnung.
+
+### Geändert
+- **Keine doppelten Einträge mehr:** Hat die App zu einer Aufgabe einen Kalendereintrag angelegt, erscheint nur noch die Aufgabe, mit Kalendersymbol. Damit bleibt auch kein offener Termin-Doppel stehen, wenn die Aufgabe abgehakt ist.
+- **Aufgaben ohne Uhrzeit** stehen nicht mehr zur Uhrzeit des letzten Abgleichs, sondern oben wie ganztägige Termine; im Kalender ganztägig, in der To-do-Liste mit Datum ohne Uhrzeit.
+
+Benötigt eine aktuelle Version der App; ältere Versionen funktionieren weiter wie bisher.
+
 ## [0.6.0] – 2026-11-05
 
 ### Neu

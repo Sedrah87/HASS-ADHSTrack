@@ -5,7 +5,7 @@
  * damit sie unabhängig von Sprache und Entitäts-IDs funktionieren. Optional per `entity` überschreibbar.
  */
 
-const VERSION = "0.6.0";
+const VERSION = "0.7.0";
 const DOMAIN = "adhstrack";
 
 // ---------------------------------------------------------------- Hilfsfunktionen
@@ -75,7 +75,7 @@ function ortHtml(ort) {
 }
 
 /** Aufgaben, Kalendertermine und Einnahmen als gemeinsame, nach Zeit sortierte Einträge. */
-function eintraege(hass, config, { tage = 1, mitUeberfaelligen = true } = {}) {
+function eintraege(hass, config, { tage = 1, mitUeberfaelligen = true, mitOhneDatum = false } = {}) {
   const agenda = zustand(hass, "agenda", config.entity);
   const meds = zustand(hass, "medikamente", config.medikamente_entity);
   const heute = heuteText();
@@ -85,9 +85,18 @@ function eintraege(hass, config, { tage = 1, mitUeberfaelligen = true } = {}) {
     const ueberfaellig = a.datum < heute && a.ueberfaellig && !a.erledigt;
     if (!(a.datum >= heute && a.datum <= bis) && !(mitUeberfaelligen && ueberfaellig)) continue;
     if (config.erledigte_ausblenden && a.erledigt) continue;
-    liste.push({ art: "aufgabe", datum: ueberfaellig ? "ueberfaellig" : a.datum, start: a.start, ende: a.ende, titel: a.titel,
-      erledigt: a.erledigt, wartet: a.wartet, ueberfaellig: a.ueberfaellig, uid: a.uid, farbe: a.farbe, liste: a.liste,
+    // Ohne Uhrzeit: wie ganztägig (kein Platz auf Uhr und Zeitleiste).
+    liste.push({ art: "aufgabe", datum: ueberfaellig ? "ueberfaellig" : a.datum, start: a.ohne_zeit ? null : a.start,
+      ende: a.ohne_zeit ? null : a.ende, ganztaegig: !!a.ohne_zeit, titel: a.titel, erledigt: a.erledigt, wartet: a.wartet,
+      ueberfaellig: a.ueberfaellig, uid: a.uid, farbe: a.farbe, liste: a.liste, im_kalender: a.im_kalender,
       ort: config.orte_ausblenden ? null : a.ort });
+  }
+  if (mitOhneDatum && !config.ohne_datum_ausblenden) {
+    for (const a of (agenda && agenda.attributes.ohne_datum) || []) {
+      if (config.erledigte_ausblenden && a.erledigt) continue;
+      liste.push({ art: "aufgabe", datum: "ohne_datum", start: null, ohne_datum: true, titel: a.titel, erledigt: a.erledigt,
+        wartet: a.wartet, uid: a.uid, farbe: a.farbe, liste: a.liste, im_kalender: a.im_kalender });
+    }
   }
   if (!config.termine_ausblenden) {
     for (const t of (agenda && agenda.attributes.termine) || []) {
@@ -145,6 +154,7 @@ const BASIS_STIL = `
   .gruppe.warn { color: var(--error-color); }
   .segment { display: inline-flex; border: 1px solid var(--divider-color); border-radius: 16px; overflow: hidden; }
   .segment button { border: none; background: none; padding: 3px 10px; cursor: pointer; font: inherit; font-size: 0.85em; color: var(--primary-text-color); }
+  .kal-symbol { --mdc-icon-size: 14px; margin-left: 4px; color: var(--secondary-text-color); vertical-align: -1px; }
   .ort { display: inline-flex; align-items: center; gap: 2px; margin-left: 6px; font-size: 0.85em; color: var(--secondary-text-color); }
   .ort ha-icon { --mdc-icon-size: 14px; }
   .segment button.an { background: var(--primary-color); color: var(--text-primary-color, #fff); }
@@ -165,6 +175,7 @@ const FELD = {
   eingenommene: { name: "eingenommene_ausblenden", selector: { boolean: {} } },
   erledigte: { name: "erledigte_ausblenden", selector: { boolean: {} } },
   orte: { name: "orte_ausblenden", selector: { boolean: {} } },
+  ohne_datum: { name: "ohne_datum_ausblenden", selector: { boolean: {} } },
   umschalter: { name: "umschalter_ausblenden", selector: { boolean: {} } },
   von: { name: "von", selector: { number: { min: 0, max: 23, mode: "box" } } },
   bis: { name: "bis", selector: { number: { min: 1, max: 24, mode: "box" } } },
@@ -177,6 +188,7 @@ const BESCHRIFTUNG = {
   eingenommene_ausblenden: "Eingenommene Medikamente ausblenden",
   erledigte_ausblenden: "Erledigte Aufgaben ausblenden",
   orte_ausblenden: "Ort-Erinnerungen ausblenden",
+  ohne_datum_ausblenden: "Aufgaben ohne Datum ausblenden",
   auto_ausblenden: "Auto-Auslöser ausblenden (Einsteigen/Aussteigen)",
   adresse_ausblenden: "Adresse ausblenden",
   umschalter_ausblenden: "Umschalter ausblenden",
@@ -267,7 +279,9 @@ function zeileHtml(hass, e, { mitAktionen = true, heute = heuteText() } = {}) {
     const haken = mitAktionen
       ? hakenHtml(e)
       : `<span class="punkt" style="background:${esc(e.farbe || "var(--primary-color)")}"></span>`;
-    return `<div class="${klassen}">${haken}<span class="zeit">${uhrzeit(hass, e.start)}</span><span class="text">${esc(e.titel)}${ortHtml(e.ort)}</span></div>`;
+    const zeit = e.ohne_datum ? "" : e.ganztaegig ? "ganzt." : uhrzeit(hass, e.start);
+    const kalender = e.im_kalender ? `<ha-icon class="kal-symbol" icon="mdi:calendar" title="Auch im Kalender"></ha-icon>` : "";
+    return `<div class="${klassen}">${haken}<span class="zeit">${zeit}</span><span class="text">${esc(e.titel)}${kalender}${ortHtml(e.ort)}</span></div>`;
   }
   if (e.art === "termin") {
     const ort = e.ort_text ? `<span class="ort" title="${esc(e.ort_text)}"><ha-icon icon="mdi:map-marker"></ha-icon>${esc(e.ort_text)}</span>` : "";
@@ -287,7 +301,7 @@ class AdhsAgendaKarte extends AdhsBasisKarte {
 
   inhalt(hass, config) {
     const tage = { heute: 1, "3": 3, "7": 7 }[this._zeitraum || config.zeitraum] || 1;
-    const liste = eintraege(hass, config, { tage });
+    const liste = eintraege(hass, config, { tage, mitOhneDatum: true });
     const segmente = !config.umschalter_ausblenden
       ? `<div class="segment">${[["heute", "Heute"], ["3", "3 Tage"], ["7", "7 Tage"]]
           .map(([w, t]) => `<button data-zeitraum="${w}" class="${(this._zeitraum || config.zeitraum) === w ? "an" : ""}">${t}</button>`).join("")}</div>`
@@ -299,9 +313,11 @@ class AdhsAgendaKarte extends AdhsBasisKarte {
       if (!gruppen.has(e.datum)) gruppen.set(e.datum, []);
       gruppen.get(e.datum).push(e);
     }
-    const reihenfolge = [...gruppen.keys()].sort((a, b) => (a === "ueberfaellig" ? -1 : b === "ueberfaellig" ? 1 : a.localeCompare(b)));
+    // Überfällig zuerst, „Ohne Datum“ zuletzt, dazwischen die Tage.
+    const rang = (d) => (d === "ueberfaellig" ? 0 : d === "ohne_datum" ? 2 : 1);
+    const reihenfolge = [...gruppen.keys()].sort((a, b) => rang(a) - rang(b) || a.localeCompare(b));
     for (const datum of reihenfolge) {
-      const titel = datum === "ueberfaellig" ? "Überfällig" : tagUeberschrift(hass, datum);
+      const titel = datum === "ueberfaellig" ? "Überfällig" : datum === "ohne_datum" ? "Ohne Datum" : tagUeberschrift(hass, datum);
       html += `<div class="gruppe ${datum === "ueberfaellig" ? "warn" : ""}">${esc(titel)}</div>`;
       html += gruppen.get(datum).map((e) => zeileHtml(hass, e)).join("");
     }
@@ -322,7 +338,7 @@ class AdhsAgendaKarte extends AdhsBasisKarte {
         FELD.titel,
         { name: "zeitraum", selector: { select: { mode: "dropdown", options: [
           { value: "heute", label: "Heute" }, { value: "3", label: "3 Tage" }, { value: "7", label: "7 Tage" }] } } },
-        FELD.umschalter, FELD.erledigte, FELD.orte, FELD.eingenommene, FELD.medikamente, FELD.termine,
+        FELD.umschalter, FELD.erledigte, FELD.orte, FELD.ohne_datum, FELD.eingenommene, FELD.medikamente, FELD.termine,
       ],
       computeLabel: beschriftung,
     };
@@ -353,13 +369,13 @@ class AdhsTagesplanungKarte extends AdhsBasisKarte {
     const abhakbar = heute.filter((e) => e.art !== "termin");
     const fertig = abhakbar.filter((e) => e.erledigt).length;
     const jetzt = new Date().toISOString();
-    const naechste = heute.filter((e) => !e.erledigt && (e.ende || e.start) >= jetzt.slice(0, 16) || (!e.erledigt && e.ueberfaellig));
+    const naechste = heute.filter((e) => !e.erledigt && ((e.ende || e.start) >= jetzt.slice(0, 16) || e.ueberfaellig || (e.art === "aufgabe" && !e.start)));
     const kopf = `<div class="kopf"><span class="titel">${esc(config.titel || "Tagesplanung")}</span><span class="neben">${fertig}/${abhakbar.length} erledigt</span></div>`;
 
     if (config.groesse === "s") {
       const n = naechste[0];
       return kopf + `<div class="fortschritt">${ring(abhakbar.length ? fertig / abhakbar.length : 0, 56, 6)}
-        <div><div class="neben">Als Nächstes</div><div>${n ? `${uhrzeit(hass, n.start)} · ${esc(n.titel)}${ortHtml(n.ort)}` : "Alles erledigt"}</div></div></div>`;
+        <div><div class="neben">Als Nächstes</div><div>${n ? `${n.start ? uhrzeit(hass, n.start) + " · " : ""}${esc(n.titel)}${ortHtml(n.ort)}` : "Alles erledigt"}</div></div></div>`;
     }
     if (config.groesse === "m") {
       const zeilen = (naechste.length ? naechste : heute).slice(0, 6);
@@ -500,7 +516,17 @@ class AdhsKalenderKarte extends AdhsBasisKarte {
 class AdhsUhrKarte extends AdhsBasisKarte {
   static schluessel = ["agenda", "medikamente"];
   static standard = { modus: "12h" };
-  static stil = `svg { width: 100%; max-width: 320px; display: block; margin: 0 auto; } .legende { text-align: center; margin-top: 8px; }`;
+  static stil = `
+    svg { width: 100%; max-width: 320px; display: block; margin: 0 auto; }
+    .legende { margin-top: 8px; }
+    .eintrag { display: flex; align-items: center; gap: 8px; padding: 2px 0; font-size: 0.9em; }
+    .eintrag.erledigt { opacity: .5; text-decoration: line-through; }
+    .eintrag.naechster { font-weight: 600; }
+    .nr { flex: none; width: 1.4em; height: 1.4em; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center;
+          font-size: 0.75em; font-weight: 600; color: var(--text-primary-color, #fff); }
+    .eintrag .zeit { width: 3.2em; }
+    .mehr { color: var(--secondary-text-color); font-size: 0.85em; padding-top: 2px; }
+  `;
 
   inhalt(hass, config) {
     const sechs = config.modus === "6h";
@@ -529,13 +555,17 @@ class AdhsUhrKarte extends AdhsBasisKarte {
     }
     const liste = eintraege(hass, config, { tage: 2, mitUeberfaelligen: false })
       .filter((e) => e.start && new Date(e.start) < bisZeit && new Date(e.ende || e.start) > (sechs ? jetzt : new Date(jetzt.getTime() - 3600000)));
-    for (const e of liste) {
+    const farbeVon = (e) => (e.art === "einnahme" ? "var(--warning-color, #f4b400)" : (e.farbe || "var(--primary-color)"));
+    liste.forEach((e, i) => {
       const start = new Date(Math.max(new Date(e.start), sechs ? jetzt : 0));
       const ende = new Date(Math.min(new Date(e.ende || new Date(e.start).getTime() + 30 * 60000), bisZeit));
-      const farbe = e.art === "einnahme" ? "var(--warning-color, #f4b400)" : (e.farbe || "var(--primary-color)");
+      const farbe = farbeVon(e);
       const w1 = winkel(start), w2 = Math.max(winkel(ende), w1 + 4);
       svg += `<path d="${bogen(w1, w2, r + 0.5)}" fill="none" stroke="${esc(farbe)}" stroke-width="8" stroke-linecap="round" opacity="${e.erledigt ? 0.35 : 1}"><title>${esc(uhrzeit(hass, e.start) + " " + e.titel + (e.ort ? " – " + ortText(e.ort) : ""))}</title></path>`;
-    }
+      // Nummer außen am Bogenanfang – passt zur Liste unter der Uhr.
+      const [nx, ny] = punkt(w1, r + 9);
+      svg += `<text x="${nx}" y="${ny}" font-size="8" font-weight="600" text-anchor="middle" dominant-baseline="middle" fill="var(--primary-text-color)" opacity="${e.erledigt ? 0.5 : 1}">${i + 1}</text>`;
+    });
     if (sechs) {
       const [x, y] = punkt(0, r);
       svg += `<circle cx="${x}" cy="${y}" r="4" fill="var(--error-color)"/>`;
@@ -549,12 +579,18 @@ class AdhsUhrKarte extends AdhsBasisKarte {
     const mitte = sechs
       ? `<text x="${c}" y="${c - 6}" font-size="20" font-weight="600" text-anchor="middle" fill="var(--primary-text-color)">${uhrzeit(hass, jetzt.toISOString())}</text><text x="${c}" y="${c + 14}" font-size="10" text-anchor="middle" fill="var(--secondary-text-color)">nächste 6 h</text>`
       : "";
+    // Namen der Blöcke als Liste (sichtbar ohne Mouseover), nummeriert wie die Bögen.
+    const MAX = 6;
+    const zeilen = liste.slice(0, MAX).map((e, i) => `<div class="eintrag ${e.erledigt ? "erledigt" : ""} ${e === naechster ? "naechster" : ""}">
+        <span class="nr" style="background:${esc(farbeVon(e))}">${i + 1}</span><span class="zeit">${uhrzeit(hass, e.start)}</span>
+        <span class="text">${e.art === "einnahme" ? "💊 " : ""}${esc(e.titel)}${e.im_kalender ? `<ha-icon class="kal-symbol" icon="mdi:calendar"></ha-icon>` : ""}</span></div>`).join("");
+    const mehr = liste.length > MAX ? `<div class="mehr">+ ${liste.length - MAX} weitere</div>` : "";
     return `<div class="kopf"><span class="titel">${esc(config.titel || (sechs ? "6 Stunden" : "12 Stunden"))}</span></div>
-      <svg viewBox="0 0 200 200">${svg}${mitte}</svg>
-      <div class="legende neben">${naechster ? `Als Nächstes: ${uhrzeit(hass, naechster.start)} · ${esc(naechster.titel)}` : "Nichts Weiteres geplant"}</div>`;
+      <svg viewBox="-12 -12 224 224">${svg}${mitte}</svg>
+      <div class="legende">${liste.length ? zeilen + mehr : `<div class="leer">Nichts Weiteres geplant</div>`}</div>`;
   }
 
-  getCardSize() { return 6; }
+  getCardSize() { return 8; }
 
   static getConfigForm() {
     return {
