@@ -74,6 +74,12 @@
       "koffein": {
         "name": "Koffein"
       },
+      "koffein_mg": {
+        "name": "Koffein heute"
+      },
+      "koffein_spiegel": {
+        "name": "Koffein-Spiegel"
+      },
       "alkohol": {
         "name": "Alkohol"
       },

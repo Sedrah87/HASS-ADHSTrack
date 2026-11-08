@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Any
 
 from homeassistant.components.sensor import (
@@ -14,14 +14,19 @@ from homeassistant.components.sensor import (
     SensorStateClass,
 )
 from homeassistant.const import PERCENTAGE, EntityCategory, UnitOfTime, UnitOfVolume
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, callback
+from homeassistant.helpers.event import async_track_time_interval
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
+from homeassistant.util import dt as dt_util
 
 from . import AdhsConfigEntry
 from .daten import AdhsDaten, parse_zeit
 from .entity import AdhsEntity
 
 BPM = "bpm"
+MG = "mg"
+# Halbwertszeit wie in der App (KoffeinSpiegel.swift); der Spiegel wird hier ab dem letzten Push weitergerechnet.
+KOFFEIN_HALBWERTSZEIT = timedelta(hours=5)
 
 
 def _k(feld: str) -> Callable[[AdhsDaten], Any]:
@@ -30,6 +35,16 @@ def _k(feld: str) -> Callable[[AdhsDaten], Any]:
 
 def _j(feld: str) -> Callable[[AdhsDaten], Any]:
     return lambda d: (d.stand.get("journal") or {}).get(feld)
+
+
+def _koffein_spiegel(d: AdhsDaten) -> int | None:
+    """Spiegel der App zum Zeitpunkt `koffein_spiegel_zeit`, bis jetzt mit 5 h Halbwertszeit abgebaut."""
+    basis = _j("koffein_spiegel_mg")(d)
+    zeit = parse_zeit(_j("koffein_spiegel_zeit")(d))
+    if not isinstance(basis, (int, float)) or zeit is None:
+        return None
+    alter = max(dt_util.utcnow() - zeit, timedelta(0))
+    return round(basis * 0.5 ** (alter / KOFFEIN_HALBWERTSZEIT))
 
 
 def _t(feld: str) -> Callable[[AdhsDaten], Any]:
@@ -123,6 +138,18 @@ SENSOREN: tuple[AdhsSensorBeschreibung, ...] = (
     ),
     # Journal
     AdhsSensorBeschreibung(key="koffein", native_unit_of_measurement="Tassen", state_class=SensorStateClass.MEASUREMENT, wert=_j("koffein")),
+    AdhsSensorBeschreibung(
+        key="koffein_mg", native_unit_of_measurement=MG, state_class=SensorStateClass.MEASUREMENT, wert=_j("koffein_mg"),
+    ),
+    AdhsSensorBeschreibung(
+        key="koffein_spiegel", native_unit_of_measurement=MG, state_class=SensorStateClass.MEASUREMENT,
+        wert=_koffein_spiegel,
+        attribute=lambda d: {
+            "basis_mg": _j("koffein_spiegel_mg")(d),
+            "basis_zeit": _j("koffein_spiegel_zeit")(d),
+            "halbwertszeit_h": KOFFEIN_HALBWERTSZEIT.total_seconds() / 3600,
+        },
+    ),
     AdhsSensorBeschreibung(key="alkohol", native_unit_of_measurement="Getränke", state_class=SensorStateClass.MEASUREMENT, wert=_j("alkohol")),
     AdhsSensorBeschreibung(
         key="fluessigkeit", device_class=SensorDeviceClass.VOLUME, native_unit_of_measurement=UnitOfVolume.MILLILITERS,
@@ -189,7 +216,9 @@ SENSOREN: tuple[AdhsSensorBeschreibung, ...] = (
 async def async_setup_entry(
     hass: HomeAssistant, entry: AdhsConfigEntry, async_add_entities: AddConfigEntryEntitiesCallback
 ) -> None:
-    async_add_entities(AdhsSensor(entry.runtime_data, b) for b in SENSOREN)
+    async_add_entities(
+        (AdhsKoffeinSpiegelSensor if b.key == "koffein_spiegel" else AdhsSensor)(entry.runtime_data, b) for b in SENSOREN
+    )
 
 
 class AdhsSensor(AdhsEntity, SensorEntity):
@@ -214,3 +243,16 @@ class AdhsSensor(AdhsEntity, SensorEntity):
         if self.entity_description.attribute is None:
             return None
         return self.entity_description.attribute(self.daten)
+
+
+class AdhsKoffeinSpiegelSensor(AdhsSensor):
+    """Rechnet den Abbau minütlich weiter, auch ohne neuen Abgleich aus der App."""
+
+    async def async_added_to_hass(self) -> None:
+        await super().async_added_to_hass()
+        self.async_on_remove(async_track_time_interval(self.hass, self._minute, timedelta(minutes=1)))
+
+    @callback
+    def _minute(self, _jetzt: datetime) -> None:
+        if self.native_value is not None:
+            self.async_write_ha_state()

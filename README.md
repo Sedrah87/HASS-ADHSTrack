@@ -5,7 +5,7 @@
 Verbindet die iOS-App **ADHS Track** mit Home Assistant. Du brauchst weder Nabu Casa noch die Companion-App: Die App schickt ihre Daten per Webhook an deine eigene HA-Adresse.
 
 - **Körperwerte** als Sensoren mit Verlauf: Recovery, Schlaf (% und Dauer), Strain, Ruhepuls, HRV, Atemfrequenz und letzte Herzfrequenz.
-- **Körper-Journal**: Koffein, Alkohol, Flüssigkeit, Stimmung und Energie.
+- **Körper-Journal**: Koffein, Alkohol, Flüssigkeit, Stimmung und Energie, dazu Koffein in mg und der geschätzte Koffein-Spiegel.
 - **Aufgaben** als To-do-Liste, in HA abhakbar. Die App übernimmt den Haken beim nächsten Abgleich; HA zeigt ihn erst, wenn das iPhone ihn bestätigt hat.
 - **Kalender** mit Aufgaben, Terminen aus den iOS-Kalendern der App und geplanten Einnahmen für heute bis +6 Tage – alles in einem Kalender.
 - **Medikamente**: Ereignisse zur Erinnerungszeit (nur wenn noch nicht eingenommen) und bei jeder Einnahme. Einnahmen lassen sich auch aus HA erfassen, z. B. per NFC-Tag.
@@ -70,6 +70,8 @@ In HA abgehakte Aufgaben zeigen zunächst eine Sanduhr („wartet auf das iPhone
 |---|---|
 | `sensor.*_recovery`, `*_schlaf`, `*_schlafdauer`, `*_strain`, `*_ruhepuls`, `*_hrv`, `*_atemfrequenz`, `*_letzte_herzfrequenz` | Körperwerte (Statistik/Verlauf) |
 | `sensor.*_koffein`, `*_alkohol`, `*_fluessigkeit`, `*_stimmung`, `*_energie` | Journal von heute |
+| `sensor.*_koffein_heute` | Koffein heute in mg laut Apple Health (alle Quellen) |
+| `sensor.*_koffein_spiegel` | Geschätzter Koffein-Spiegel in mg (Halbwertszeit 5 h), sinkt minütlich auch ohne neuen Abgleich |
 | `sensor.*_offene_aufgaben_heute`, `*_ueberfaellige_aufgaben`, `*_inbox`, `*_agenda`, `*_ort_erinnerungen` | Aufgaben (Listen als Attribute) |
 | `sensor.*_offene_einnahmen_heute`, `*_naechste_einnahme` | Medikamente (Plan als Attribut) |
 | `sensor.*_trainingszone`, `*_trainingspuls`, `binary_sensor.*_training_aktiv` | Training live |

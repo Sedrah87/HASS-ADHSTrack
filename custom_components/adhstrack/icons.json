@@ -10,6 +10,8 @@
       "atemfrequenz": { "default": "mdi:lungs" },
       "letzte_herzfrequenz": { "default": "mdi:heart" },
       "koffein": { "default": "mdi:coffee" },
+      "koffein_mg": { "default": "mdi:coffee-outline" },
+      "koffein_spiegel": { "default": "mdi:coffee-maker-outline" },
       "alkohol": { "default": "mdi:glass-wine" },
       "fluessigkeit": { "default": "mdi:cup-water" },
       "stimmung": { "default": "mdi:emoticon-outline" },

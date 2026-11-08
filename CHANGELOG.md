@@ -2,6 +2,14 @@
 
 Alle sichtbaren Änderungen an der Integration „ADHS Track“. Die Version steht in Home Assistant bzw. im Marketplace/HACS; die Release-Notizen auf GitHub werden aus dieser Datei erzeugt.
 
+## [0.8.0] – 2026-11-08
+
+### Neu
+- **Koffein-Spiegel:** Neuer Sensor mit dem geschätzten Koffein im Körper (mg, Halbwertszeit 5 Stunden). Er sinkt minütlich weiter, auch wenn das iPhone gerade nichts sendet; jeder neue Abgleich setzt den Wert neu.
+- **Koffein heute:** Neuer Sensor mit der heutigen Koffeinmenge in mg laut Apple Health.
+
+Benötigt eine aktuelle Version der App mit Health-Freigabe für Koffein; sonst bleiben beide Sensoren „unbekannt“.
+
 ## [0.7.0] – 2026-11-06
 
 ### Neu

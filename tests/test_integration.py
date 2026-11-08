@@ -11,6 +11,7 @@ import pytest
 from homeassistant import config_entries
 from homeassistant.core import HomeAssistant
 from homeassistant.data_entry_flow import FlowResultType
+from homeassistant.helpers import entity_registry as er
 from homeassistant.setup import async_setup_component
 from homeassistant.util import dt as dt_util
 
@@ -90,6 +91,35 @@ async def test_koerper_sensoren(hass: HomeAssistant, eintrag, hass_client_no_aut
     assert "72" in werte.values()
     assert "431" in werte.values()
     assert "1500" in werte.values()
+
+
+async def test_koffein_spiegel_baut_ohne_app_ab(
+    hass: HomeAssistant, eintrag, hass_client_no_auth, freezer: FrozenDateTimeFactory
+) -> None:
+    jetzt = dt_util.utcnow().replace(microsecond=0)
+    freezer.move_to(jetzt)
+    journal = {"tag": "2026-11-08", "koffein": 2, "alkohol": 0, "fluessigkeit_ml": 0}
+    # Ältere App ohne die neuen Felder: Sensoren bleiben unbekannt.
+    await sende(hass_client_no_auth, sync(journal=journal))
+    await hass.async_block_till_done()
+    register = er.async_get(hass)
+    spiegel = register.async_get_entity_id("sensor", DOMAIN, f"{eintrag.entry_id}_koffein_spiegel")
+    heute = register.async_get_entity_id("sensor", DOMAIN, f"{eintrag.entry_id}_koffein_mg")
+    assert hass.states.get(spiegel).state == "unknown"
+
+    await sende(hass_client_no_auth, sync(journal={
+        **journal, "koffein_mg": 160, "koffein_spiegel_mg": 120, "koffein_spiegel_zeit": iso(jetzt),
+    }))
+    await hass.async_block_till_done()
+    assert hass.states.get(spiegel).state == "120"
+    assert hass.states.get(heute).state == "160"
+
+    # 5 h ohne Abgleich: der Sensor rechnet selbst weiter (minütlicher Takt).
+    freezer.move_to(jetzt + timedelta(hours=5))
+    async_fire_time_changed(hass)
+    await hass.async_block_till_done()
+    assert hass.states.get(spiegel).state == "60"
+    assert hass.states.get(heute).state == "160"
 
 
 async def test_aufgabe_abhaken_und_bestaetigen(hass: HomeAssistant, eintrag, hass_client_no_auth) -> None:
