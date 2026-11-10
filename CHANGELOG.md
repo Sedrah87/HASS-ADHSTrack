@@ -2,6 +2,11 @@
 
 Alle sichtbaren Änderungen an der Integration „ADHS Track“. Die Version steht in Home Assistant bzw. im Marketplace/HACS; die Release-Notizen auf GitHub werden aus dieser Datei erzeugt.
 
+## [0.8.1] – 2026-11-10
+
+### Behoben
+- **Koffein-Spiegel ohne Lücken:** Kann die App Apple Health gerade nicht lesen (iPhone gesperrt, Abgleich im Hintergrund, nach Mitternacht), wurde der Sensor kurz „unbekannt“ und der Verlauf hatte Lücken. Jetzt behält die Integration den letzten Wert und rechnet den Abbau durchgehend weiter.
+
 ## [0.8.0] – 2026-11-08
 
 ### Neu

@@ -144,6 +144,17 @@ class AdhsDaten:
         if isinstance(daten.get("zeitzone"), str) and dt_util.get_time_zone(daten["zeitzone"]) is not None:
             self.stand["zeitzone"] = daten["zeitzone"]
 
+        # Kann die App Health gerade nicht lesen (gesperrt, Hintergrund, neuer Tag), fehlt die Koffein-Basis:
+        # dann die letzte behalten, damit der Spiegel ohne Lücke weiter abgebaut wird.
+        if isinstance(daten.get("journal"), dict):
+            alt_journal = self.stand.get("journal") or {}
+            if daten["journal"].get("koffein_spiegel_mg") is None and alt_journal.get("koffein_spiegel_mg") is not None:
+                daten["journal"] = {
+                    **daten["journal"],
+                    "koffein_spiegel_mg": alt_journal["koffein_spiegel_mg"],
+                    "koffein_spiegel_zeit": alt_journal.get("koffein_spiegel_zeit"),
+                }
+
         # Abgeschaltete Bereiche fehlen in der Nachricht: dann den letzten Stand behalten.
         for bereich in ("koerper", "journal", "aufgaben", "orte", "ohne_datum", "inbox", "termine", "medikamente", "einnahmen"):
             if bereich in daten and daten[bereich] is not None:

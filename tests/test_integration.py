@@ -121,6 +121,15 @@ async def test_koffein_spiegel_baut_ohne_app_ab(
     assert hass.states.get(spiegel).state == "60"
     assert hass.states.get(heute).state == "160"
 
+    # Abgleich ohne Koffein-Basis (Health gesperrt): letzte Basis bleibt, keine Lücke im Verlauf.
+    await sende(hass_client_no_auth, sync(journal=journal))
+    await hass.async_block_till_done()
+    assert hass.states.get(spiegel).state == "60"
+    freezer.move_to(jetzt + timedelta(hours=10))
+    async_fire_time_changed(hass)
+    await hass.async_block_till_done()
+    assert hass.states.get(spiegel).state == "30"
+
 
 async def test_aufgabe_abhaken_und_bestaetigen(hass: HomeAssistant, eintrag, hass_client_no_auth) -> None:
     heute = dt_util.now().date().isoformat()
