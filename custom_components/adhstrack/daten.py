@@ -72,6 +72,8 @@ class AdhsDaten:
     einnahmen_initialisiert: bool = False
     # Eigene Farben aus den Optionen (Schlüssel: medikamente, aufgaben, termine); ohne Eintrag gilt die Farbe der App.
     farben: dict[str, str] = field(default_factory=dict)
+    # Listen-Abgleich mit fremden To-do-Listen (wird in __init__ gesetzt)
+    listen: Any = None
     _timer: dict[str, Callable[[], None]] = field(default_factory=dict)
     _abmelden: list[Callable[[], None]] = field(default_factory=list)
 
@@ -413,6 +415,25 @@ class AdhsDaten:
         self._speichern()
         self._benachrichtigen()
         return True
+
+    @callback
+    def befehl_einreihen(self, art: str, schluessel: str, **felder: Any) -> None:
+        """Befehl an die App; ersetzt einen älteren, noch nicht bestätigten mit demselben Schlüssel. Ist er inhaltlich
+        gleich, bleibt er samt ID stehen (die App erkennt ihn so als bereits angewendet)."""
+        alt = next((b for b in self.warteschlange if b.get("schluessel") == schluessel), None)
+        if alt is not None and alt["art"] == art and all(alt.get(k) == v for k, v in felder.items() if k != "geaendert_am"):
+            return
+        self.warteschlange = [b for b in self.warteschlange if b.get("schluessel") != schluessel]
+        self.warteschlange.append({"id": uuid.uuid4().hex, "art": art, "schluessel": schluessel, **felder})
+        self._speichern()
+
+    @callback
+    def befehle_verwerfen(self, schluessel: str) -> None:
+        """Noch nicht abgeholte Befehle verwerfen (die App-Änderung ist jünger)."""
+        vorher = len(self.warteschlange)
+        self.warteschlange = [b for b in self.warteschlange if b.get("schluessel") != schluessel]
+        if len(self.warteschlange) != vorher:
+            self._speichern()
 
     @callback
     def einnahme_erfassen(self, med_id: str, zeitpunkt: datetime | None = None) -> bool:

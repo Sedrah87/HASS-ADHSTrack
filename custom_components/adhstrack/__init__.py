@@ -34,6 +34,7 @@ from .const import (
     SPEICHER_VERSION,
 )
 from .daten import AdhsDaten
+from .listen_sync import ListenAbgleich
 from .kopplung import KopplungsView
 
 _LOGGER = logging.getLogger(__name__)
@@ -119,6 +120,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: AdhsConfigEntry) -> bool
         store=Store(hass, SPEICHER_VERSION, f"{DOMAIN}.{entry.entry_id}"),
     )
     await daten.async_laden()
+    daten.listen = ListenAbgleich(hass, daten)
+    await daten.listen.async_laden()
     daten.farben = {
         art: entry.options[f"farbe_{art}"]
         for art in FARB_ARTEN
@@ -148,11 +151,13 @@ async def _neu_laden(hass: HomeAssistant, entry: AdhsConfigEntry) -> None:
 async def async_unload_entry(hass: HomeAssistant, entry: AdhsConfigEntry) -> bool:
     webhook.async_unregister(hass, entry.data[CONF_WEBHOOK_ID])
     entry.runtime_data.async_entladen()
+    entry.runtime_data.listen.async_entladen()
     return await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
 
 
 async def async_remove_entry(hass: HomeAssistant, entry: AdhsConfigEntry) -> None:
     await Store(hass, SPEICHER_VERSION, f"{DOMAIN}.{entry.entry_id}").async_remove()
+    await Store(hass, SPEICHER_VERSION, f"{DOMAIN}.{entry.entry_id}.listen").async_remove()
 
 
 async def _webhook_handler(hass: HomeAssistant, webhook_id: str, request: web.Request) -> web.Response:
@@ -174,7 +179,11 @@ async def _webhook_handler(hass: HomeAssistant, webhook_id: str, request: web.Re
     daten: AdhsDaten = eintrag.runtime_data
     match nachricht.get("typ"):
         case "sync":
-            return web.json_response(daten.verarbeite_sync(nachricht))
+            antwort = daten.verarbeite_sync(nachricht)
+            # Listen-Abgleich danach: Bestätigungen sind verarbeitet, neue Befehle kommen in dieselbe Antwort.
+            antwort.update(await daten.listen.verarbeiten(nachricht))
+            antwort["befehle"] = list(daten.warteschlange)
+            return web.json_response(antwort)
         case "training":
             daten.verarbeite_training(nachricht)
             return web.json_response({})

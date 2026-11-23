@@ -2,6 +2,19 @@
 
 Alle sichtbaren Änderungen an der Integration „ADHS Track“. Die Version steht in Home Assistant bzw. im Marketplace/HACS; die Release-Notizen auf GitHub werden aus dieser Datei erzeugt.
 
+## [0.9.0] – 2026-11-23
+
+### Neu
+- **Listen abgleichen:** Jede Liste der App lässt sich in der App (Einstellungen › Home Assistant › „To-do-Listen abgleichen“) mit einer To-do-Liste in Home Assistant verbinden – z. B. Local To-do, Einkaufsliste oder Todoist. Neue, umbenannte, abgehakte und gelöschte Einträge gleichen sich in beide Richtungen ab, auch Notiz und Fälligkeit, soweit die Liste sie kennt.
+- **Neue Liste aus der App:** Gibt es noch keine passende Liste, legt die Integration auf Wunsch eine Local-To-do-Liste mit dem gewählten Namen an.
+
+### Sicherheit beim Abgleich
+- Jede Aufgabe hat eine feste ID; gleiche Titel werden beim ersten Verbinden verknüpft statt verdoppelt.
+- Bei Änderungen auf beiden Seiten gilt die jüngere – auch nach längerer Zeit ohne Verbindung.
+- Erledigte Aufgaben und wiederkehrende Aufgaben werden aus Home Assistant heraus nie gelöscht; „Erledigte entfernen“ räumt nur die Liste in HA auf.
+
+Benötigt eine aktuelle Version der App. Die bisherige Liste „Aufgaben“ bleibt unverändert.
+
 ## [0.8.1] – 2026-11-10
 
 ### Behoben

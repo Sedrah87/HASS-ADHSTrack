@@ -64,6 +64,15 @@ Du kannst die Daten in der App auch von Hand eintragen, unter **Mehr › Home As
 
 In HA abgehakte Aufgaben zeigen zunächst eine Sanduhr („wartet auf das iPhone“). Die App übernimmt die Änderung beim nächsten Abgleich und bestätigt sie; erst dann zeigt HA den neuen Stand. Geht unterwegs etwas verloren, wird der Befehl beim nächsten Abgleich erneut zugestellt; die App wendet jeden Befehl genau einmal an. Erneutes Antippen der Sanduhr nimmt die Änderung zurück.
 
+## Listen abgleichen
+
+In der App unter Einstellungen › Home Assistant › „To-do-Listen abgleichen“ lässt sich jede App-Liste mit einer vorhandenen To-do-Liste in Home Assistant verbinden (Local To-do, Einkaufsliste, Todoist, …) oder eine neue Local-To-do-Liste anlegen. Die Zuordnung gilt für alle Geräte.
+
+- Anlegen, Umbenennen, Abhaken und Löschen gleichen sich in beide Richtungen ab, Notiz und Fälligkeit, soweit die Liste sie unterstützt.
+- Haben beide Seiten geändert, gilt die jüngere Änderung – auch wenn das iPhone zwischendurch offline war.
+- Übertragen werden offene und in den letzten 7 Tagen erledigte Aufgaben; bei wiederkehrenden Aufgaben das nächste Vorkommen. Abhaken in HA erledigt dieses Vorkommen.
+- Erledigte und wiederkehrende Aufgaben werden aus Home Assistant heraus nie gelöscht.
+
 ## Entitäten
 
 | Entität | Inhalt |
@@ -77,6 +86,7 @@ In HA abgehakte Aufgaben zeigen zunächst eine Sanduhr („wartet auf das iPhone
 | `sensor.*_trainingszone`, `*_trainingspuls`, `binary_sensor.*_training_aktiv` | Training live |
 | `binary_sensor.*_medikament_faellig` | Eine Einnahme ist fällig und noch offen |
 | `todo.*_aufgaben` | Heutige und überfällige Aufgaben |
+| eigene To-do-Listen | Mit einer App-Liste verbunden (siehe „Listen abgleichen“) |
 | `calendar.*_kalender` | Aufgaben, iOS-Kalendertermine und Einnahmen für heute bis +6 Tage |
 
 Die Entitäts-IDs hängen von der Sprache ab. Die Karten finden ihre Entitäten deshalb selbst.

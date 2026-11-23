@@ -1,6 +1,9 @@
 {
   "domain": "adhstrack",
   "name": "ADHS Track",
+  "after_dependencies": [
+    "local_todo"
+  ],
   "categories": [
     "health_wellbeing",
     "productivity_information.calendars_todos"
@@ -19,5 +22,5 @@
   "iot_class": "local_push",
   "issue_tracker": "https://github.com/Sedrah87/HASS-ADHSTrack/issues",
   "requirements": [],
-  "version": "0.8.1"
+  "version": "0.9.0"
 }

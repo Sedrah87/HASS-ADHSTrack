@@ -30,6 +30,10 @@ SERVICE_AUFGABE: Final = "aufgabe_erledigen"
 # Befehle an die App (Antwort auf "sync")
 BEFEHL_AUFGABE: Final = "aufgabe_status"
 BEFEHL_EINNAHME: Final = "einnahme"
+# Listen-Abgleich (s. listen_sync.py)
+BEFEHL_LISTE_ANLEGEN: Final = "aufgabe_anlegen"
+BEFEHL_LISTE_AENDERN: Final = "aufgabe_aendern"
+BEFEHL_LISTE_LOESCHEN: Final = "aufgabe_loeschen"
 
 # Frontend (Dashboard-Karten)
 FRONTEND_URL: Final = "/adhstrack_static"
